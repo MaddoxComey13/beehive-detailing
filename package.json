@@ -1,0 +1,13 @@
+{
+  "name": "beehive-detailing-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Beehive Detailing Co. marketing site + booking form + Jobber integration functions.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^26.2.0"
+  }
+}
