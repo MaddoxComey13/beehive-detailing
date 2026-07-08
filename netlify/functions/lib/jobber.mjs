@@ -13,7 +13,7 @@ const GRAPHQL_ENDPOINT = 'https://api.getjobber.com/api/graphql';
 
 // Jobber's API is date-versioned. Set JOBBER_API_VERSION in env if you need
 // to pin a specific version; otherwise this default is used.
-const API_VERSION = process.env.JOBBER_API_VERSION || '2025-01-20';
+const API_VERSION = process.env.JOBBER_API_VERSION || '2025-04-16';
 
 const TOKEN_STORE_NAME = 'jobber-tokens';
 const TOKEN_KEY = 'current';

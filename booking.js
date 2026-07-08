@@ -285,10 +285,23 @@ function readStep5Inputs() {
   state.email = document.getElementById('email').value.trim();
 }
 
-// Phase 4 will replace this with a real fetch() to the Netlify function.
 async function submitBooking(payload) {
-  console.log('Booking payload (not yet sent to Jobber):', payload);
-  return { ok: true, mock: true };
+  try {
+    const res = await fetch('/.netlify/functions/create-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      console.error('Booking submission failed:', data);
+      return { ok: false, error: data.error || `Server returned ${res.status}` };
+    }
+    return data;
+  } catch (err) {
+    console.error('Booking submission failed:', err);
+    return { ok: false, error: err.message };
+  }
 }
 
 function buildPayload() {
@@ -399,7 +412,7 @@ function init() {
       document.getElementById('formWizard').classList.add('hidden');
       document.getElementById('successPanel').classList.remove('hidden');
     } else {
-      alert('Something went wrong sending your request. Please call/text us instead.');
+      alert(`Something went wrong sending your request: ${result.error || 'unknown error'}\n\nPlease call/text us instead.`);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Confirm & send request';
     }
