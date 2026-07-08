@@ -4,13 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Book a Detail — Beehive Detailing | Salt Lake City</title>
-<meta name="description" content="Book your mobile car detail with Beehive Detailing. Mobile detailing across Salt Lake City and the Wasatch Front." />
+<meta name="description" content="Book your mobile car detail with Beehive Detailing. Pick your package, add-ons, and time — we come to you anywhere in Salt Lake City and the Wasatch Front." />
 <meta name="robots" content="noindex, follow" />
 <link rel="canonical" href="https://beehivedetailingco.com/booking.html" />
-
-<!-- Send visitors straight to the live Jobber booking form -->
-<link rel="preconnect" href="https://clienthub.getjobber.com" crossorigin />
-<meta http-equiv="refresh" content="0; url=https://clienthub.getjobber.com/hubs/afd56c54-d270-4da9-ac41-b3507fc26717/public/requests/4904970/new" />
 
 <meta name="theme-color" content="#DC2626" />
 <link rel="icon" type="image/png" href="logo.png" />
@@ -36,40 +32,165 @@
 </script>
 <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="bg-paper text-ink font-sans antialiased min-h-screen flex items-center justify-center px-6">
+<body class="bg-paper text-ink font-sans antialiased min-h-screen pb-28">
 
-  <main class="text-center max-w-md">
-    <a href="index.html" class="inline-flex items-center gap-2.5 mb-10 cursor-pointer">
-      <img src="logo.png" alt="Beehive Detailing logo" class="w-9 h-9 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+<!-- NAV -->
+<header class="sticky top-0 z-50 bg-paper/90 backdrop-blur-md border-b border-ink/10">
+  <nav class="max-w-2xl mx-auto flex items-center justify-between px-5 sm:px-6 py-4">
+    <a href="index.html" class="flex items-center gap-2.5 cursor-pointer">
+      <img src="logo.png" alt="Beehive Detailing logo" class="w-8 h-8 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
       <span class="hidden w-2.5 h-2.5 rounded-full bg-accent"></span>
-      <span class="font-bold tracking-tight text-base">BEEHIVE</span>
-      <span class="text-ink/40 text-base tracking-tight">Detailing</span>
+      <span class="font-bold tracking-tight text-[15px]">BEEHIVE</span>
+      <span class="text-ink/40 text-[15px] tracking-tight hidden sm:inline">Detailing</span>
     </a>
+    <span id="stepLabel" class="text-xs uppercase tracking-wider text-ink/50">Step 1 of 6</span>
+  </nav>
+  <!-- progress dots -->
+  <div class="max-w-2xl mx-auto px-5 sm:px-6 pb-4 flex gap-1.5">
+    <span data-progress-dot="1" class="h-1 flex-1 rounded-full bg-accent transition-colors"></span>
+    <span data-progress-dot="2" class="h-1 flex-1 rounded-full bg-ink/15 transition-colors"></span>
+    <span data-progress-dot="3" class="h-1 flex-1 rounded-full bg-ink/15 transition-colors"></span>
+    <span data-progress-dot="4" class="h-1 flex-1 rounded-full bg-ink/15 transition-colors"></span>
+    <span data-progress-dot="5" class="h-1 flex-1 rounded-full bg-ink/15 transition-colors"></span>
+    <span data-progress-dot="6" class="h-1 flex-1 rounded-full bg-ink/15 transition-colors"></span>
+  </div>
+</header>
 
-    <div class="mx-auto w-12 h-12 mb-7">
-      <svg class="w-12 h-12 text-accent animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+<main id="formWizard" class="max-w-2xl mx-auto px-5 sm:px-6 py-10">
+
+  <!-- STEP 1: PACKAGE -->
+  <section data-step="1">
+    <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">01 — Package</div>
+    <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-8">Pick your package.</h1>
+    <div id="packageOptions" class="grid gap-4"></div>
+  </section>
+
+  <!-- STEP 2: VEHICLE SIZE -->
+  <section data-step="2" class="hidden">
+    <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">02 — Vehicle</div>
+    <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-8">What are we detailing?</h1>
+    <div id="vehicleOptions" class="grid grid-cols-2 gap-4"></div>
+  </section>
+
+  <!-- STEP 3: ADD-ONS -->
+  <section data-step="3" class="hidden">
+    <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">03 — Add-ons</div>
+    <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-8">Anything extra?</h1>
+    <div id="radioAddons" class="mb-2"></div>
+    <div class="text-sm font-semibold mb-3">Other add-ons</div>
+    <div id="checkboxAddons" class="grid gap-3"></div>
+  </section>
+
+  <!-- STEP 4: DATE & TIME -->
+  <section data-step="4" class="hidden">
+    <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">04 — Schedule</div>
+    <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-8">When works for you?</h1>
+
+    <label for="dateInput" class="block text-sm font-semibold mb-2">Preferred date</label>
+    <input type="date" id="dateInput"
+      class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base mb-8 focus:outline-none focus:border-accent" />
+
+    <label class="block text-sm font-semibold mb-3">Preferred arrival window</label>
+    <div id="timeOptions" class="grid grid-cols-2 gap-3"></div>
+    <p class="text-ink/50 text-xs mt-4">We'll text and email to confirm your exact arrival time.</p>
+  </section>
+
+  <!-- STEP 5: ADDRESS & CONTACT -->
+  <section data-step="5" class="hidden">
+    <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">05 — Address &amp; contact</div>
+    <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-8">Where should we come?</h1>
+
+    <div class="grid gap-4 mb-10">
+      <div>
+        <label for="address1" class="block text-sm font-semibold mb-2">Service address <span class="text-accent">*</span></label>
+        <input type="text" id="address1" required placeholder="Street address"
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+      <div>
+        <label for="address2" class="block text-sm font-semibold mb-2">Apt / unit / gate code</label>
+        <input type="text" id="address2" placeholder="Optional"
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+      <div class="grid grid-cols-[1fr_auto_1fr] gap-3">
+        <div>
+          <label for="city" class="block text-sm font-semibold mb-2">City <span class="text-accent">*</span></label>
+          <input type="text" id="city" required value="Salt Lake City"
+            class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-2">State</label>
+          <input type="text" value="UT" disabled
+            class="w-16 rounded-2xl border border-ink/15 px-3 py-4 text-base text-center bg-ink/5 text-ink/50" />
+        </div>
+        <div>
+          <label for="zip" class="block text-sm font-semibold mb-2">ZIP <span class="text-accent">*</span></label>
+          <input type="text" id="zip" required inputmode="numeric" placeholder="84101"
+            class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+        </div>
+      </div>
     </div>
 
-    <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(2rem,6vw,3rem)]">Taking you to booking…</h1>
-    <p class="text-ink/60 mt-4">One sec — we're opening our secure booking form so you can pick your package and time.</p>
+    <div class="grid gap-4">
+      <div>
+        <label for="fullName" class="block text-sm font-semibold mb-2">Full name <span class="text-accent">*</span></label>
+        <input type="text" id="fullName" required
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+      <div>
+        <label for="phone" class="block text-sm font-semibold mb-2">Phone <span class="text-accent">*</span></label>
+        <input type="tel" id="phone" required placeholder="(801) 555-0100"
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+      <div>
+        <label for="email" class="block text-sm font-semibold mb-2">Email <span class="text-accent">*</span></label>
+        <input type="email" id="email" required
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+    </div>
+  </section>
 
-    <a id="bookLink"
-       href="https://clienthub.getjobber.com/hubs/afd56c54-d270-4da9-ac41-b3507fc26717/public/requests/4904970/new"
-       class="mt-9 inline-flex items-center justify-center gap-2 bg-accent text-white px-7 py-3.5 rounded-full text-sm font-semibold hover:bg-accent-hover transition-colors cursor-pointer">
-      Continue to booking
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </a>
+  <!-- STEP 6: REVIEW -->
+  <section data-step="6" class="hidden">
+    <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">06 — Review</div>
+    <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-8">Review your request.</h1>
+    <div id="reviewContent" class="rounded-3xl border border-ink/10 bg-paper-card p-7 sm:p-8"></div>
+  </section>
 
-    <p class="mt-6 text-xs text-ink/40">
-      Not redirected automatically?
-      <a href="https://clienthub.getjobber.com/hubs/afd56c54-d270-4da9-ac41-b3507fc26717/public/requests/4904970/new" class="underline hover:text-accent">Tap here</a>.
-    </p>
-  </main>
+</main>
 
-  <script>
-    // Instant redirect for JS-enabled visitors (meta refresh above is the fallback).
-    window.location.replace("https://clienthub.getjobber.com/hubs/afd56c54-d270-4da9-ac41-b3507fc26717/public/requests/4904970/new");
-  </script>
+<!-- SUCCESS PANEL (shown after submit) -->
+<main id="successPanel" class="hidden max-w-md mx-auto px-6 py-24 text-center">
+  <div class="mx-auto w-14 h-14 mb-7 rounded-full bg-accent/10 flex items-center justify-center">
+    <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-4">Request ready.</h1>
+  <p class="text-ink/60 leading-relaxed">This form isn't connected to our booking system yet — that's the next step. Once it's wired up, submitting here will send your request straight to our team.</p>
+  <a href="index.html" class="mt-10 inline-flex items-center gap-2 border border-ink/15 text-ink px-6 py-3.5 rounded-full text-sm font-semibold hover:bg-ink hover:text-white transition-colors cursor-pointer">
+    Back to home
+  </a>
+</main>
 
+<!-- STICKY BOTTOM BAR -->
+<div class="fixed bottom-0 left-0 right-0 z-50 bg-paper/95 backdrop-blur-md border-t border-ink/10">
+  <div class="max-w-2xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between gap-4">
+    <div>
+      <div class="text-xs text-ink/50 uppercase tracking-wider">Total</div>
+      <div id="runningTotal" class="text-2xl font-extrabold tracking-tight">$144</div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="backBtn" type="button" class="invisible px-5 py-3.5 rounded-full text-sm font-semibold border border-ink/15 hover:bg-ink/5 transition-colors cursor-pointer">
+        Back
+      </button>
+      <button id="continueBtn" type="button" class="px-6 py-3.5 rounded-full text-sm font-semibold bg-ink text-white hover:bg-accent transition-colors cursor-pointer">
+        Continue
+      </button>
+      <button id="submitBtn" type="button" class="hidden px-6 py-3.5 rounded-full text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer">
+        Confirm &amp; send request
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="booking.js"></script>
 </body>
 </html>
