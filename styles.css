@@ -1,0 +1,32 @@
+/* Beehive Detailing — global polish */
+
+html { scroll-behavior: smooth; }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+/* hide scrollbar on the date scroller for a cleaner feel */
+#dateScroller::-webkit-scrollbar { height: 0; }
+#dateScroller { scrollbar-width: none; }
+
+/* fade-up entrance for steps */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced-motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Selection styling */
+::selection { background: #DC2626; color: #fff; }
+
+/* Focus baseline (Tailwind handles most) */
+:focus-visible {
+  outline-offset: 2px;
+}

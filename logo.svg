@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <!-- Transparent background -->
+  <!-- Pennant / banner shape on the upper-left, with notch -->
+  <path d="M 240 220 L 480 330 L 480 600 L 240 720 L 320 470 Z" fill="#DC2626"/>
+  <!-- B letter: vertical stem + two bumps -->
+  <path d="M 420 200
+           L 600 200
+           C 740 200 800 280 800 370
+           C 800 430 770 470 720 490
+           C 790 510 830 560 830 630
+           C 830 730 760 800 600 800
+           L 420 800
+           Z
+           M 540 320
+           L 540 460
+           L 600 460
+           C 650 460 680 430 680 390
+           C 680 350 650 320 600 320
+           Z
+           M 540 540
+           L 540 680
+           L 610 680
+           C 670 680 700 645 700 605
+           C 700 565 670 540 610 540
+           Z"
+        fill="#DC2626" fill-rule="evenodd"/>
+</svg>
