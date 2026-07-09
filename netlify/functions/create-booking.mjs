@@ -28,8 +28,8 @@ const CLIENT_CREATE = `
 `;
 
 const PROPERTY_CREATE = `
-  mutation CreateProperty($input: PropertyCreateInput!) {
-    propertyCreate(input: $input) {
+  mutation CreateProperty($clientId: EncodedId!, $input: PropertyCreateInput!) {
+    propertyCreate(clientId: $clientId, input: $input) {
       properties { id }
       userErrors { message path }
     }
@@ -164,6 +164,15 @@ export default async (req) => {
         lastName,
         emails: [{ description: 'MAIN', primary: true, address: body.contact.email }],
         phones: [{ description: 'MAIN', primary: true, number: body.contact.phone }],
+        // The client's own emails/phones above are just scalar fields --
+        // propertyCreate links via an actual Contact record, so we need to
+        // explicitly create one here too (confirmed via GraphiQL: ClientCreateInput.contacts).
+        contacts: [{
+          firstName,
+          lastName,
+          emails: [{ description: 'MAIN', primary: true, address: body.contact.email }],
+          phones: [{ description: 'MAIN', primary: true, number: body.contact.phone }],
+        }],
       },
     });
     if (clientResult.clientCreate.userErrors?.length) {
@@ -174,6 +183,7 @@ export default async (req) => {
     if (!contactId) throw new Error('Client was created but has no contact to attach the property to.');
 
     const propertyResult = await jobberGraphQL(PROPERTY_CREATE, {
+      clientId,
       input: {
         properties: [{
           address: {
