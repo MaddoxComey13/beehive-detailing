@@ -22,6 +22,12 @@ const TOKEN_KEY = 'current';
 // mid-request.
 const EXPIRY_BUFFER_MS = 60 * 1000;
 
+// Jobber's token response doesn't actually include `expires_in` (confirmed
+// live -- response only has access_token/refresh_token). Their docs say
+// access tokens expire after 60 minutes by default, so assume that when
+// expires_in is absent, with a few minutes of headroom.
+const DEFAULT_EXPIRES_IN_SECONDS = 55 * 60;
+
 function tokenStore() {
   return getStore(TOKEN_STORE_NAME);
 }
@@ -76,10 +82,11 @@ async function postToken(body) {
 }
 
 async function saveTokens(tokens) {
+  const expiresInSeconds = tokens.expires_in || DEFAULT_EXPIRES_IN_SECONDS;
   const record = {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
-    expires_at: Date.now() + tokens.expires_in * 1000,
+    expires_at: Date.now() + expiresInSeconds * 1000,
   };
   await tokenStore().setJSON(TOKEN_KEY, record);
   return record;
