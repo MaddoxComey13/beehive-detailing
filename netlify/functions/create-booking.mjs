@@ -48,14 +48,14 @@ const REQUEST_CREATE = `
 // Mirrors booking.js's tier model exactly -- this is what actually prices
 // the real Jobber request, so it must never trust the client's own total.
 const PACKAGE_LABELS = {
-  interior: { label: 'Interior Only', price: 144 },
-  bronze: { label: 'Bronze', price: 184 },
+  bronze: { label: 'Bronze', price: 144 },
+  silver: { label: 'Silver', price: 184 },
   gold: { label: 'Gold', price: 239 },
   diamond: { label: 'Diamond', price: 279 },
 };
 
-const EXTERIOR_PACKAGES = new Set(['bronze', 'gold', 'diamond']);
-const VEHICLE_SIZE_DISCOUNT = { interior: 0, bronze: 0, gold: 0.10, diamond: 0.20 };
+const EXTERIOR_PACKAGES = new Set(['silver', 'gold', 'diamond']);
+const VEHICLE_SIZE_DISCOUNT = { bronze: 0, silver: 0, gold: 0.10, diamond: 0.20 };
 
 const VEHICLE_LABELS = {
   standard: { label: 'Standard', price: 0 },
@@ -81,7 +81,7 @@ const RADIO_ADDONS = {
     label: 'Odor removal',
     options: { none: { label: 'None', price: 0 }, base: { label: 'Standard', price: 45 }, smoke: { label: 'Cigarette smoke', price: 60 } },
     order: ['none', 'base', 'smoke'],
-    includedLevel: { diamond: 'base' },
+    includedLevel: {},
   },
 };
 
@@ -106,7 +106,6 @@ const CHECKBOX_ADDON_LABELS = {
   engineCleaning: { label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
   bugTarRemoval: { label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: [] },
   headlightRestoration: { label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
-  truckBedDetail: { label: 'Truck bed detail', price: 20, scope: 'exterior', includedFrom: [] },
 };
 
 function checkboxAddonPrice(addon, pkgId) {

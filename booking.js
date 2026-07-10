@@ -1,20 +1,22 @@
 // Beehive Detailing — booking form logic
-// Tier model: Interior Only / Bronze / Gold / Diamond. Gold and Diamond
-// bundle certain add-ons in for free -- see CHECKBOX_ADDONS' includedFrom
-// and RADIO_ADDONS' includedLevel below for exactly what's included where.
+// Tier model: Bronze / Silver / Gold / Diamond. Gold and Diamond bundle
+// certain add-ons in for free -- see CHECKBOX_ADDONS' includedFrom and
+// RADIO_ADDONS' includedLevel below for exactly what's included where.
+// Gold/Diamond descriptions cite real dollar savings vs. building the
+// same detail a la carte on Silver -- see the savings note below.
 
 const PACKAGES = [
-  { id: 'interior', label: 'Interior Only', price: 144, wash: null, desc: 'Interior detail, no exterior wash.' },
-  { id: 'bronze', label: 'Bronze', price: 184, wash: '2-step wash', desc: 'Full detail, 2-step wash. Build your own with any add-ons.' },
-  { id: 'gold', label: 'Gold', price: 239, wash: '3-step wash', desc: 'Full detail, 3-step wash. Tire shine, leather conditioning, carpet shampoo and pet hair removal included.' },
-  { id: 'diamond', label: 'Diamond', price: 279, wash: '3-step wash + hand wash and wax', desc: 'The full works. Everything in Gold, plus stain removal, engine bay cleaning, odor removal and deep-clean carpets included.' },
+  { id: 'bronze', label: 'Bronze', price: 144, wash: null, badge: null, desc: 'A fast, thorough interior refresh — vacuumed, steamed, and smelling brand new.' },
+  { id: 'silver', label: 'Silver', price: 184, wash: '2-step wash', badge: null, desc: 'Full inside-and-out detail, built your way. Add exactly what your car needs.' },
+  { id: 'gold', label: 'Gold', price: 239, wash: '3-step wash', badge: 'Save $50', desc: 'The extras everyone adds anyway — tire shine, leather conditioning, carpet shampoo and pet hair removal, all bundled in for $50 less than adding them separately.' },
+  { id: 'diamond', label: 'Diamond', price: 279, wash: '3-step wash + hand wash and wax', badge: 'Save $120', desc: 'Bumper to bumper, nothing held back. Everything in Gold plus full pet hair removal, stain removal, engine bay cleaning and a deep-clean shampoo — $120 less than building it piece by piece.' },
 ];
 
-// Only Bronze, Gold, and Diamond include an exterior wash -- these add-ons
-// don't apply to Interior Only and are hidden when it's selected.
-const EXTERIOR_PACKAGES = new Set(['bronze', 'gold', 'diamond']);
+// Only Silver, Gold, and Diamond include an exterior wash -- these add-ons
+// don't apply to Bronze (interior-only) and are hidden when it's selected.
+const EXTERIOR_PACKAGES = new Set(['silver', 'gold', 'diamond']);
 
-const VEHICLE_SIZE_DISCOUNT = { interior: 0, bronze: 0, gold: 0.10, diamond: 0.20 };
+const VEHICLE_SIZE_DISCOUNT = { bronze: 0, silver: 0, gold: 0.10, diamond: 0.20 };
 
 const VEHICLE_SIZES_BASE = [
   { id: 'standard', label: 'Standard', desc: 'Sedan, coupe, hatchback', price: 0 },
@@ -30,8 +32,8 @@ function vehiclePrice(sizeId, pkgId) {
 }
 
 // Checkbox add-ons: independent, stack freely. `scope: 'exterior'` items
-// are hidden entirely for Interior Only. `includedFrom` lists package ids
-// where this item is bundled in for free.
+// are hidden entirely for Bronze (interior-only). `includedFrom` lists
+// package ids where this item is bundled in for free.
 const CHECKBOX_ADDONS = [
   { id: 'stainRemoval', label: 'Stain removal', price: 30, scope: 'interior', includedFrom: ['diamond'] },
   { id: 'carpetShampoo', label: 'Carpet shampoo', price: 30, scope: 'interior', includedFrom: ['gold', 'diamond'] },
@@ -41,12 +43,13 @@ const CHECKBOX_ADDONS = [
   { id: 'engineCleaning', label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
   { id: 'bugTarRemoval', label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: [] },
   { id: 'headlightRestoration', label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
-  { id: 'truckBedDetail', label: 'Truck bed detail', price: 20, scope: 'exterior', includedFrom: [] },
 ];
 
 // Radio add-ons: pick at most one option per group. `includedLevel` maps a
 // package id to the option that's included free at that tier -- any option
 // at or below that level is free; anything above it costs the difference.
+// Odor removal is never included, even at Diamond -- it stays a distinct
+// paid option at every tier.
 const RADIO_ADDONS = [
   {
     id: 'petHair',
@@ -68,7 +71,7 @@ const RADIO_ADDONS = [
       { id: 'base', label: 'Standard', price: 45 },
       { id: 'smoke', label: 'Cigarette smoke', price: 60 },
     ],
-    includedLevel: { diamond: 'base' },
+    includedLevel: {},
   },
 ];
 
@@ -141,19 +144,24 @@ function isIncludedCheckbox(addon) {
 
 function visibleCheckboxAddons() {
   const showExterior = EXTERIOR_PACKAGES.has(state.package);
-  return CHECKBOX_ADDONS.filter(a => a.scope !== 'exterior' || showExterior);
+  return CHECKBOX_ADDONS.filter(a => {
+    if (a.scope === 'exterior' && !showExterior) return false;
+    if (a.requiresVehicle && a.requiresVehicle !== state.vehicleSize) return false;
+    return true;
+  });
 }
 
 // Strip selections that are no longer visible/valid for the current
-// package (e.g. an exterior add-on picked on Bronze, then switched to
-// Interior Only) so nothing keeps silently charging for a hidden item.
+// package or vehicle size (e.g. an exterior add-on picked on Bronze, then
+// switched to Interior Only; or truck bed detail picked on a truck, then
+// switched to a different vehicle size) so nothing keeps silently
+// charging for a hidden item.
 function pruneInvalidSelections() {
   const showExterior = EXTERIOR_PACKAGES.has(state.package);
-  if (!showExterior) {
-    CHECKBOX_ADDONS.forEach(a => {
-      if (a.scope === 'exterior') state.checkboxAddons.delete(a.id);
-    });
-  }
+  CHECKBOX_ADDONS.forEach(a => {
+    if (a.scope === 'exterior' && !showExterior) state.checkboxAddons.delete(a.id);
+    if (a.requiresVehicle && a.requiresVehicle !== state.vehicleSize) state.checkboxAddons.delete(a.id);
+  });
 }
 
 function selectedAddonSummary() {
@@ -177,19 +185,36 @@ function selectedAddonSummary() {
   return lines;
 }
 
+// Gold and Diamond carry their homepage brand treatment (gold surround /
+// dark+red premium card) into the booking flow when selected, instead of
+// the generic red-accent selection every other tier uses.
+const PACKAGE_THEMES = {
+  gold: { cardStyle: 'background:#FBF3DC;border-color:#B8860B;', titleColor: '#8A6A08', descColor: '#6B5308', washColor: '#8A6A08', badgeStyle: 'background:#B8860B;color:#fff;' },
+  diamond: { cardStyle: 'background:#0F172A;border-color:#E24B4A;', titleColor: 'rgba(255,255,255,0.6)', descColor: 'rgba(255,255,255,0.65)', washColor: 'rgba(255,255,255,0.5)', textColor: '#fff', badgeStyle: 'background:#DC2626;color:#fff;' },
+};
+
 function renderPackages() {
   const el = document.getElementById('packageOptions');
-  el.innerHTML = PACKAGES.map(p => `
+  el.innerHTML = PACKAGES.map(p => {
+    const selected = state.package === p.id;
+    const themeAlways = PACKAGE_THEMES[p.id];
+    const themeSelected = selected ? themeAlways : null;
+    const wrapClasses = themeSelected ? 'border-2' : (selected ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30');
+    const cardStyle = themeSelected ? `${themeSelected.cardStyle}${themeSelected.textColor ? `color:${themeSelected.textColor};` : ''}` : '';
+    return `
     <button type="button" data-package="${p.id}"
-      class="option-card text-left rounded-3xl border p-6 sm:p-7 transition-colors ${state.package === p.id ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
-      <div class="flex items-center justify-between mb-2">
+      class="option-card text-left rounded-3xl border ${wrapClasses} p-6 sm:p-7 transition-colors relative"
+      style="${cardStyle}">
+      ${p.badge ? `<span class="absolute -top-3 left-6 text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full font-semibold" style="${themeAlways.badgeStyle}">${p.badge}</span>` : ''}
+      <div class="flex items-center justify-between mb-2 mt-1">
         <span class="font-bold text-lg">${p.label}</span>
         <span class="text-2xl font-extrabold tracking-tight">${money(p.price)}</span>
       </div>
-      ${p.wash ? `<div class="text-xs uppercase tracking-wider text-ink/40 mb-2">${p.wash}</div>` : ''}
-      <p class="text-ink/60 text-sm">${p.desc}</p>
+      ${p.wash ? `<div class="text-xs uppercase tracking-wider mb-2" style="${themeSelected ? `color:${themeSelected.washColor};` : 'color:rgb(15 23 42 / 0.4);'}">${p.wash}</div>` : ''}
+      <p class="text-sm" style="${themeSelected ? `color:${themeSelected.descColor};` : 'color:rgb(15 23 42 / 0.6);'}">${p.desc}</p>
     </button>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderVehicleSizes() {
@@ -235,25 +260,39 @@ function renderAddons() {
   `;
   }).join('');
 
-  const checkEl = document.getElementById('checkboxAddons');
-  checkEl.innerHTML = visibleCheckboxAddons().map(a => {
+  function checkboxCard(a) {
     const included = isIncludedCheckbox(a);
     if (included) {
       return `
-      <div class="flex items-center justify-between rounded-2xl border border-accent bg-accent/5 px-5 py-4 text-left">
-        <span class="font-medium text-sm">${a.label}</span>
-        <span class="text-sm font-bold text-accent">Included</span>
+      <div class="flex items-center justify-between rounded-xl border border-accent bg-accent/5 px-4 py-3 text-left">
+        <span class="font-medium text-xs">${a.label}</span>
+        <span class="text-xs font-bold text-accent">Included</span>
       </div>
     `;
     }
     return `
     <button type="button" data-checkbox-addon="${a.id}"
-      class="option-card flex items-center justify-between rounded-2xl border px-5 py-4 text-left transition-colors ${state.checkboxAddons.has(a.id) ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
-      <span class="font-medium text-sm">${a.label}</span>
-      <span class="text-sm font-bold text-ink/70">+${money(a.price)}</span>
+      class="option-card flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${state.checkboxAddons.has(a.id) ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
+      <span class="font-medium text-xs">${a.label}</span>
+      <span class="text-xs font-bold text-ink/70">+${money(a.price)}</span>
     </button>
   `;
-  }).join('');
+  }
+
+  const visible = visibleCheckboxAddons();
+  const interiorAddons = visible.filter(a => a.scope === 'interior');
+  const exteriorAddons = visible.filter(a => a.scope === 'exterior');
+  const checkEl = document.getElementById('checkboxAddons');
+  checkEl.innerHTML = `
+    ${interiorAddons.length ? `
+      <div class="text-xs font-semibold text-ink/50 uppercase tracking-wider mb-2">Interior extras</div>
+      <div class="grid grid-cols-2 gap-2 mb-5">${interiorAddons.map(checkboxCard).join('')}</div>
+    ` : ''}
+    ${exteriorAddons.length ? `
+      <div class="text-xs font-semibold text-ink/50 uppercase tracking-wider mb-2">Exterior extras</div>
+      <div class="grid grid-cols-2 gap-2">${exteriorAddons.map(checkboxCard).join('')}</div>
+    ` : ''}
+  `;
 }
 
 function renderTimeWindows() {
@@ -455,7 +494,9 @@ function init() {
     const btn = e.target.closest('[data-vehicle]');
     if (!btn) return;
     state.vehicleSize = btn.dataset.vehicle;
+    pruneInvalidSelections();
     renderVehicleSizes();
+    renderAddons();
     updateTotalBar();
   });
 
