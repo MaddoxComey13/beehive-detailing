@@ -45,10 +45,17 @@ const REQUEST_CREATE = `
   }
 `;
 
+// Mirrors booking.js's tier model exactly -- this is what actually prices
+// the real Jobber request, so it must never trust the client's own total.
 const PACKAGE_LABELS = {
   interior: { label: 'Interior Only', price: 144 },
-  both: { label: 'Interior + Exterior', price: 184 },
+  bronze: { label: 'Bronze', price: 184 },
+  gold: { label: 'Gold', price: 239 },
+  diamond: { label: 'Diamond', price: 279 },
 };
+
+const EXTERIOR_PACKAGES = new Set(['bronze', 'gold', 'diamond']);
+const VEHICLE_SIZE_DISCOUNT = { interior: 0, bronze: 0, gold: 0.10, diamond: 0.20 };
 
 const VEHICLE_LABELS = {
   standard: { label: 'Standard', price: 0 },
@@ -57,22 +64,58 @@ const VEHICLE_LABELS = {
   truck: { label: 'Truck', price: 40 },
 };
 
-const PET_HAIR_LABELS = { medium: { label: 'Pet hair removal (medium)', price: 30 }, heavy: { label: 'Pet hair removal (heavy)', price: 60 } };
-const ODOR_LABELS = { base: { label: 'Odor removal (standard)', price: 45 }, smoke: { label: 'Odor removal (cigarette smoke)', price: 60 } };
+function vehiclePrice(sizeId, pkgId) {
+  const base = VEHICLE_LABELS[sizeId].price;
+  const discount = VEHICLE_SIZE_DISCOUNT[pkgId] || 0;
+  return Math.round(base * (1 - discount));
+}
+
+const RADIO_ADDONS = {
+  petHair: {
+    label: 'Pet hair removal',
+    options: { none: { label: 'None', price: 0 }, medium: { label: 'Medium', price: 30 }, heavy: { label: 'Heavy', price: 60 } },
+    order: ['none', 'medium', 'heavy'],
+    includedLevel: { gold: 'medium', diamond: 'heavy' },
+  },
+  odorRemoval: {
+    label: 'Odor removal',
+    options: { none: { label: 'None', price: 0 }, base: { label: 'Standard', price: 45 }, smoke: { label: 'Cigarette smoke', price: 60 } },
+    order: ['none', 'base', 'smoke'],
+    includedLevel: { diamond: 'base' },
+  },
+};
+
+function radioOptionPrice(groupKey, optionId, pkgId) {
+  const group = RADIO_ADDONS[groupKey];
+  const option = group.options[optionId];
+  const includedId = group.includedLevel[pkgId];
+  if (!includedId) return option.price;
+  const includedOption = group.options[includedId];
+  const optionIdx = group.order.indexOf(optionId);
+  const includedIdx = group.order.indexOf(includedId);
+  if (optionIdx <= includedIdx) return 0;
+  return option.price - includedOption.price;
+}
 
 const CHECKBOX_ADDON_LABELS = {
-  stainRemoval: { label: 'Stain removal', price: 30 },
-  carpetShampoo: { label: 'Carpet shampoo', price: 30 },
-  tireShine: { label: 'Tire shine', price: 20 },
-  leatherConditioning: { label: 'Leather conditioning', price: 25 },
-  engineCleaning: { label: 'Engine bay cleaning', price: 50 },
-  headlinerCleaning: { label: 'Headliner cleaning', price: 35 },
-  bugTarRemoval: { label: 'Bug & tar removal', price: 25 },
-  clayBarDecon: { label: 'Clay bar paint decontamination', price: 40 },
-  headlightRestoration: { label: 'Headlight restoration (pair)', price: 40 },
-  wheelIronDecon: { label: 'Wheel & iron decontamination', price: 25 },
-  trunkCargoDetail: { label: 'Trunk / cargo area detail', price: 20 },
+  stainRemoval: { label: 'Stain removal', price: 30, scope: 'interior', includedFrom: ['diamond'] },
+  carpetShampoo: { label: 'Carpet shampoo', price: 30, scope: 'interior', includedFrom: ['gold', 'diamond'] },
+  leatherConditioning: { label: 'Leather conditioning', price: 25, scope: 'interior', includedFrom: ['gold', 'diamond'] },
+  headlinerCleaning: { label: 'Headliner cleaning', price: 35, scope: 'interior', includedFrom: [] },
+  tireShine: { label: 'Tire shine', price: 20, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
+  engineCleaning: { label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
+  bugTarRemoval: { label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: [] },
+  headlightRestoration: { label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
+  truckBedDetail: { label: 'Truck bed detail', price: 20, scope: 'exterior', includedFrom: [] },
 };
+
+function checkboxAddonPrice(addon, pkgId) {
+  return addon.includedFrom.includes(pkgId) ? 0 : addon.price;
+}
+
+function isVisibleForPackage(addon, pkgId) {
+  return addon.scope !== 'exterior' || EXTERIOR_PACKAGES.has(pkgId);
+}
 
 const TIME_WINDOW_LABELS = {
   morning: '10:00 AM – 12:00 PM',
@@ -103,24 +146,41 @@ function validatePayload(body) {
 
 function buildLineItems(body) {
   const items = [];
-  const pkg = PACKAGE_LABELS[body.package];
+  const pkgId = body.package;
+  const pkg = PACKAGE_LABELS[pkgId];
   items.push(lineItem(pkg.label, pkg.price));
 
-  const size = VEHICLE_LABELS[body.vehicleSize];
-  if (size.price > 0) items.push(lineItem(`Vehicle size: ${size.label}`, size.price));
+  const sizePrice = vehiclePrice(body.vehicleSize, pkgId);
+  if (sizePrice > 0) {
+    const size = VEHICLE_LABELS[body.vehicleSize];
+    items.push(lineItem(`Vehicle size: ${size.label}`, sizePrice));
+  }
 
   const addons = body.addons || {};
-  if (addons.petHair && PET_HAIR_LABELS[addons.petHair]) {
-    const a = PET_HAIR_LABELS[addons.petHair];
-    items.push(lineItem(a.label, a.price));
-  }
-  if (addons.odorRemoval && ODOR_LABELS[addons.odorRemoval]) {
-    const a = ODOR_LABELS[addons.odorRemoval];
-    items.push(lineItem(a.label, a.price));
-  }
-  (addons.checkbox || []).forEach((id) => {
-    const a = CHECKBOX_ADDON_LABELS[id];
-    if (a) items.push(lineItem(a.label, a.price));
+  ['petHair', 'odorRemoval'].forEach((groupKey) => {
+    const selected = addons[groupKey];
+    const group = RADIO_ADDONS[groupKey];
+    if (!selected || selected === 'none' || !group.options[selected]) return;
+    const price = radioOptionPrice(groupKey, selected, pkgId);
+    const includedId = group.includedLevel[pkgId];
+    const isIncluded = price === 0 && includedId;
+    const label = `${group.label} (${group.options[selected].label})${isIncluded ? ' -- included' : ''}`;
+    items.push(lineItem(label, price));
+  });
+
+  // Included items never appear in the client's `checkbox` selection array
+  // (the UI shows them as a locked "Included" state, not a toggle), so we
+  // surface every tier-included item explicitly here regardless of what
+  // the client sent -- otherwise Maddox wouldn't see confirmation of what
+  // the customer is actually getting.
+  const selectedChecks = new Set(addons.checkbox || []);
+  Object.entries(CHECKBOX_ADDON_LABELS).forEach(([id, a]) => {
+    if (!isVisibleForPackage(a, pkgId)) return;
+    const included = a.includedFrom.includes(pkgId);
+    if (!included && !selectedChecks.has(id)) return;
+    const price = checkboxAddonPrice(a, pkgId);
+    const label = included ? `${a.label} -- included` : a.label;
+    items.push(lineItem(label, price));
   });
 
   // $0 informational line item so the preferred date/window is visible

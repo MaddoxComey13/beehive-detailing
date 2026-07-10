@@ -1,55 +1,91 @@
 // Beehive Detailing — booking form logic
-// Pure client-side for now (Phase 3). Phase 4 will wire submitBooking() to the
-// Netlify function that talks to Jobber.
+// Tier model: Interior Only / Bronze / Gold / Diamond. Gold and Diamond
+// bundle certain add-ons in for free -- see CHECKBOX_ADDONS' includedFrom
+// and RADIO_ADDONS' includedLevel below for exactly what's included where.
 
 const PACKAGES = [
-  { id: 'interior', label: 'Interior Only', price: 144, desc: 'Full interior reset — vacuum, steam-clean, condition.' },
-  { id: 'both', label: 'Interior + Exterior', price: 184, desc: 'Everything in Interior, plus a hand-wash exterior with sealant.' },
+  { id: 'interior', label: 'Interior Only', price: 144, wash: null, desc: 'Interior detail, no exterior wash.' },
+  { id: 'bronze', label: 'Bronze', price: 184, wash: '2-step wash', desc: 'Full detail, 2-step wash. Build your own with any add-ons.' },
+  { id: 'gold', label: 'Gold', price: 239, wash: '3-step wash', desc: 'Full detail, 3-step wash. Tire shine, leather conditioning, carpet shampoo and pet hair removal included.' },
+  { id: 'diamond', label: 'Diamond', price: 279, wash: '3-step wash + hand wash and wax', desc: 'The full works. Everything in Gold, plus stain removal, engine bay cleaning, odor removal and deep-clean carpets included.' },
 ];
 
-const VEHICLE_SIZES = [
+// Only Bronze, Gold, and Diamond include an exterior wash -- these add-ons
+// don't apply to Interior Only and are hidden when it's selected.
+const EXTERIOR_PACKAGES = new Set(['bronze', 'gold', 'diamond']);
+
+const VEHICLE_SIZE_DISCOUNT = { interior: 0, bronze: 0, gold: 0.10, diamond: 0.20 };
+
+const VEHICLE_SIZES_BASE = [
   { id: 'standard', label: 'Standard', desc: 'Sedan, coupe, hatchback', price: 0 },
   { id: 'midsize', label: 'Midsize', desc: 'Crossover, wagon', price: 20 },
   { id: 'suv', label: 'SUV', desc: '3-row SUV, minivan', price: 30 },
   { id: 'truck', label: 'Truck', desc: 'Pickup, full-size SUV', price: 40 },
 ];
 
-// Checkbox add-ons: independent, stack freely.
+function vehiclePrice(sizeId, pkgId) {
+  const base = VEHICLE_SIZES_BASE.find(v => v.id === sizeId).price;
+  const discount = VEHICLE_SIZE_DISCOUNT[pkgId] || 0;
+  return Math.round(base * (1 - discount));
+}
+
+// Checkbox add-ons: independent, stack freely. `scope: 'exterior'` items
+// are hidden entirely for Interior Only. `includedFrom` lists package ids
+// where this item is bundled in for free.
 const CHECKBOX_ADDONS = [
-  { id: 'stainRemoval', label: 'Stain removal', price: 30 },
-  { id: 'carpetShampoo', label: 'Carpet shampoo', price: 30 },
-  { id: 'tireShine', label: 'Tire shine', price: 20 },
-  { id: 'leatherConditioning', label: 'Leather conditioning', price: 25 },
-  { id: 'engineCleaning', label: 'Engine bay cleaning', price: 50 },
-  { id: 'headlinerCleaning', label: 'Headliner cleaning', price: 35 },
-  { id: 'bugTarRemoval', label: 'Bug & tar removal', price: 25 },
-  { id: 'clayBarDecon', label: 'Clay bar paint decontamination', price: 40 },
-  { id: 'headlightRestoration', label: 'Headlight restoration (pair)', price: 40 },
-  { id: 'wheelIronDecon', label: 'Wheel & iron decontamination', price: 25 },
-  { id: 'trunkCargoDetail', label: 'Trunk / cargo area detail', price: 20 },
+  { id: 'stainRemoval', label: 'Stain removal', price: 30, scope: 'interior', includedFrom: ['diamond'] },
+  { id: 'carpetShampoo', label: 'Carpet shampoo', price: 30, scope: 'interior', includedFrom: ['gold', 'diamond'] },
+  { id: 'leatherConditioning', label: 'Leather conditioning', price: 25, scope: 'interior', includedFrom: ['gold', 'diamond'] },
+  { id: 'headlinerCleaning', label: 'Headliner cleaning', price: 35, scope: 'interior', includedFrom: [] },
+  { id: 'tireShine', label: 'Tire shine', price: 20, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
+  { id: 'engineCleaning', label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
+  { id: 'bugTarRemoval', label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: [] },
+  { id: 'headlightRestoration', label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
+  { id: 'truckBedDetail', label: 'Truck bed detail', price: 20, scope: 'exterior', includedFrom: [] },
 ];
 
-// Radio add-ons: pick at most one option per group.
+// Radio add-ons: pick at most one option per group. `includedLevel` maps a
+// package id to the option that's included free at that tier -- any option
+// at or below that level is free; anything above it costs the difference.
 const RADIO_ADDONS = [
   {
     id: 'petHair',
     label: 'Pet hair removal',
+    scope: 'interior',
     options: [
       { id: 'none', label: 'None', price: 0 },
       { id: 'medium', label: 'Medium', price: 30 },
       { id: 'heavy', label: 'Heavy', price: 60 },
     ],
+    includedLevel: { gold: 'medium', diamond: 'heavy' },
   },
   {
     id: 'odorRemoval',
     label: 'Odor removal',
+    scope: 'interior',
     options: [
       { id: 'none', label: 'None', price: 0 },
       { id: 'base', label: 'Standard', price: 45 },
       { id: 'smoke', label: 'Cigarette smoke', price: 60 },
     ],
+    includedLevel: { diamond: 'base' },
   },
 ];
+
+function radioOptionPrice(group, optionId, pkgId) {
+  const option = group.options.find(o => o.id === optionId);
+  const includedId = group.includedLevel && group.includedLevel[pkgId];
+  if (!includedId) return option.price;
+  const includedOption = group.options.find(o => o.id === includedId);
+  const optionIdx = group.options.findIndex(o => o.id === optionId);
+  const includedIdx = group.options.findIndex(o => o.id === includedId);
+  if (optionIdx <= includedIdx) return 0;
+  return option.price - includedOption.price;
+}
+
+function checkboxAddonPrice(addon, pkgId) {
+  return addon.includedFrom.includes(pkgId) ? 0 : addon.price;
+}
 
 const TIME_WINDOWS = [
   { id: 'morning', label: '10:00 AM – 12:00 PM' },
@@ -86,29 +122,57 @@ function calcTotal() {
   let total = 0;
   const pkg = PACKAGES.find(p => p.id === state.package);
   if (pkg) total += pkg.price;
-  const size = VEHICLE_SIZES.find(v => v.id === state.vehicleSize);
-  if (size) total += size.price;
+  if (state.package && state.vehicleSize) total += vehiclePrice(state.vehicleSize, state.package);
 
-  const petHairOpt = RADIO_ADDONS[0].options.find(o => o.id === state.petHair);
-  if (petHairOpt) total += petHairOpt.price;
-  const odorOpt = RADIO_ADDONS[1].options.find(o => o.id === state.odorRemoval);
-  if (odorOpt) total += odorOpt.price;
+  RADIO_ADDONS.forEach(group => {
+    total += radioOptionPrice(group, state[group.id], state.package);
+  });
 
   CHECKBOX_ADDONS.forEach(a => {
-    if (state.checkboxAddons.has(a.id)) total += a.price;
+    if (state.checkboxAddons.has(a.id)) total += checkboxAddonPrice(a, state.package);
   });
 
   return total;
 }
 
+function isIncludedCheckbox(addon) {
+  return addon.includedFrom.includes(state.package);
+}
+
+function visibleCheckboxAddons() {
+  const showExterior = EXTERIOR_PACKAGES.has(state.package);
+  return CHECKBOX_ADDONS.filter(a => a.scope !== 'exterior' || showExterior);
+}
+
+// Strip selections that are no longer visible/valid for the current
+// package (e.g. an exterior add-on picked on Bronze, then switched to
+// Interior Only) so nothing keeps silently charging for a hidden item.
+function pruneInvalidSelections() {
+  const showExterior = EXTERIOR_PACKAGES.has(state.package);
+  if (!showExterior) {
+    CHECKBOX_ADDONS.forEach(a => {
+      if (a.scope === 'exterior') state.checkboxAddons.delete(a.id);
+    });
+  }
+}
+
 function selectedAddonSummary() {
   const lines = [];
-  const petHairOpt = RADIO_ADDONS[0].options.find(o => o.id === state.petHair);
-  if (petHairOpt && petHairOpt.id !== 'none') lines.push(`Pet hair removal (${petHairOpt.label}) +${money(petHairOpt.price)}`);
-  const odorOpt = RADIO_ADDONS[1].options.find(o => o.id === state.odorRemoval);
-  if (odorOpt && odorOpt.id !== 'none') lines.push(`Odor removal (${odorOpt.label}) +${money(odorOpt.price)}`);
-  CHECKBOX_ADDONS.forEach(a => {
-    if (state.checkboxAddons.has(a.id)) lines.push(`${a.label} +${money(a.price)}`);
+  RADIO_ADDONS.forEach(group => {
+    const selected = state[group.id];
+    if (selected === 'none') return;
+    const option = group.options.find(o => o.id === selected);
+    const price = radioOptionPrice(group, selected, state.package);
+    const includedId = group.includedLevel && group.includedLevel[state.package];
+    const tag = price === 0 && includedId ? ' (included)' : '';
+    lines.push(`${group.label} (${option.label})${tag}${price ? ` +${money(price)}` : ''}`);
+  });
+  visibleCheckboxAddons().forEach(a => {
+    if (isIncludedCheckbox(a)) {
+      lines.push(`${a.label} (included)`);
+    } else if (state.checkboxAddons.has(a.id)) {
+      lines.push(`${a.label} +${money(a.price)}`);
+    }
   });
   return lines;
 }
@@ -122,6 +186,7 @@ function renderPackages() {
         <span class="font-bold text-lg">${p.label}</span>
         <span class="text-2xl font-extrabold tracking-tight">${money(p.price)}</span>
       </div>
+      ${p.wash ? `<div class="text-xs uppercase tracking-wider text-ink/40 mb-2">${p.wash}</div>` : ''}
       <p class="text-ink/60 text-sm">${p.desc}</p>
     </button>
   `).join('');
@@ -129,42 +194,66 @@ function renderPackages() {
 
 function renderVehicleSizes() {
   const el = document.getElementById('vehicleOptions');
-  el.innerHTML = VEHICLE_SIZES.map(v => `
+  el.innerHTML = VEHICLE_SIZES_BASE.map(v => {
+    const price = vehiclePrice(v.id, state.package);
+    const discount = VEHICLE_SIZE_DISCOUNT[state.package] || 0;
+    return `
     <button type="button" data-vehicle="${v.id}"
       class="option-card text-left rounded-3xl border p-6 sm:p-7 transition-colors ${state.vehicleSize === v.id ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
       <div class="flex items-center justify-between mb-2">
         <span class="font-bold text-lg">${v.label}</span>
-        <span class="text-lg font-bold tracking-tight text-ink/70">${v.price === 0 ? 'Included' : '+' + money(v.price)}</span>
+        <span class="text-lg font-bold tracking-tight text-ink/70">${price === 0 ? 'Included' : '+' + money(price)}</span>
       </div>
       <p class="text-ink/60 text-sm">${v.desc}</p>
+      ${discount > 0 && v.price > 0 ? `<p class="text-accent text-xs mt-1">${Math.round(discount * 100)}% off for ${PACKAGES.find(p => p.id === state.package).label}</p>` : ''}
     </button>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderAddons() {
   const radioEl = document.getElementById('radioAddons');
-  radioEl.innerHTML = RADIO_ADDONS.map(group => `
+  const visibleRadioGroups = RADIO_ADDONS.filter(g => g.scope !== 'exterior' || EXTERIOR_PACKAGES.has(state.package));
+  radioEl.innerHTML = visibleRadioGroups.map(group => {
+    const includedId = group.includedLevel && group.includedLevel[state.package];
+    return `
     <div class="mb-6">
-      <div class="text-sm font-semibold mb-3">${group.label}</div>
+      <div class="text-sm font-semibold mb-3">${group.label}${includedId ? ' <span class="text-accent font-normal">(partly included)</span>' : ''}</div>
       <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="${group.label}">
-        ${group.options.map(o => `
+        ${group.options.map(o => {
+          const price = radioOptionPrice(group, o.id, state.package);
+          const isFree = price === 0 && o.id !== 'none';
+          return `
           <button type="button" data-radio-group="${group.id}" data-radio-value="${o.id}"
             class="option-pill rounded-full border px-3 py-2.5 text-sm font-medium transition-colors ${state[group.id] === o.id ? 'border-accent bg-accent text-white' : 'border-ink/15 hover:border-ink/30'}">
-            ${o.label}${o.price ? ` +${money(o.price)}` : ''}
+            ${o.label}${isFree ? ' ✓' : price ? ` +${money(price)}` : ''}
           </button>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   const checkEl = document.getElementById('checkboxAddons');
-  checkEl.innerHTML = CHECKBOX_ADDONS.map(a => `
+  checkEl.innerHTML = visibleCheckboxAddons().map(a => {
+    const included = isIncludedCheckbox(a);
+    if (included) {
+      return `
+      <div class="flex items-center justify-between rounded-2xl border border-accent bg-accent/5 px-5 py-4 text-left">
+        <span class="font-medium text-sm">${a.label}</span>
+        <span class="text-sm font-bold text-accent">Included</span>
+      </div>
+    `;
+    }
+    return `
     <button type="button" data-checkbox-addon="${a.id}"
       class="option-card flex items-center justify-between rounded-2xl border px-5 py-4 text-left transition-colors ${state.checkboxAddons.has(a.id) ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
       <span class="font-medium text-sm">${a.label}</span>
       <span class="text-sm font-bold text-ink/70">+${money(a.price)}</span>
     </button>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderTimeWindows() {
@@ -179,10 +268,11 @@ function renderTimeWindows() {
 
 function renderReview() {
   const pkg = PACKAGES.find(p => p.id === state.package);
-  const size = VEHICLE_SIZES.find(v => v.id === state.vehicleSize);
+  const size = VEHICLE_SIZES_BASE.find(v => v.id === state.vehicleSize);
   const addonLines = selectedAddonSummary();
   const timeLabel = TIME_WINDOWS.find(t => t.id === state.timeWindow)?.label || '';
   const dateLabel = state.date ? new Date(state.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+  const sizePrice = vehiclePrice(state.vehicleSize, state.package);
 
   document.getElementById('reviewContent').innerHTML = `
     <div class="space-y-5">
@@ -192,7 +282,7 @@ function renderReview() {
       </div>
       <div class="flex justify-between items-baseline">
         <span class="text-ink/60 text-sm">Vehicle size</span>
-        <span class="font-semibold">${size?.label || '—'}</span>
+        <span class="font-semibold">${size?.label || '—'}${sizePrice ? ` (+${money(sizePrice)})` : ''}</span>
       </div>
       ${addonLines.length ? `
         <div class="border-t border-ink/10 pt-4">
@@ -335,8 +425,7 @@ function init() {
   // Preselect package from ?pkg= query param, mirroring the homepage links.
   const params = new URLSearchParams(window.location.search);
   const pkgParam = params.get('pkg');
-  if (pkgParam === 'interior') state.package = 'interior';
-  if (pkgParam === 'both') state.package = 'both';
+  if (PACKAGES.some(p => p.id === pkgParam)) state.package = pkgParam;
 
   renderPackages();
   renderVehicleSizes();
@@ -355,7 +444,10 @@ function init() {
     const btn = e.target.closest('[data-package]');
     if (!btn) return;
     state.package = btn.dataset.package;
+    pruneInvalidSelections();
     renderPackages();
+    renderVehicleSizes();
+    renderAddons();
     updateTotalBar();
   });
 
