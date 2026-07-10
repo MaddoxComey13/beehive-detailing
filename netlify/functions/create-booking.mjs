@@ -101,10 +101,10 @@ const CHECKBOX_ADDON_LABELS = {
   stainRemoval: { label: 'Stain removal', price: 30, scope: 'interior', includedFrom: ['diamond'] },
   carpetShampoo: { label: 'Carpet shampoo', price: 30, scope: 'interior', includedFrom: ['gold', 'diamond'] },
   leatherConditioning: { label: 'Leather conditioning', price: 25, scope: 'interior', includedFrom: ['gold', 'diamond'] },
-  headlinerCleaning: { label: 'Headliner cleaning', price: 35, scope: 'interior', includedFrom: [] },
+  headlinerCleaning: { label: 'Headliner cleaning', price: 35, scope: 'interior', includedFrom: ['diamond'] },
   tireShine: { label: 'Tire shine', price: 20, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
   engineCleaning: { label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
-  bugTarRemoval: { label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: [] },
+  bugTarRemoval: { label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
   headlightRestoration: { label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
 };
 

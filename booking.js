@@ -8,8 +8,8 @@
 const PACKAGES = [
   { id: 'bronze', label: 'Bronze', price: 144, wash: null, badge: null, desc: 'A fast, thorough interior refresh — vacuumed, steamed, and smelling brand new.' },
   { id: 'silver', label: 'Silver', price: 184, wash: '2-step wash', badge: null, desc: 'Full inside-and-out detail, built your way. Add exactly what your car needs.' },
-  { id: 'gold', label: 'Gold', price: 239, wash: '3-step wash', badge: 'Save $50', desc: 'The extras everyone adds anyway — tire shine, leather conditioning, carpet shampoo and pet hair removal, all bundled in for $50 less than adding them separately.' },
-  { id: 'diamond', label: 'Diamond', price: 279, wash: '3-step wash + hand wash and wax', badge: 'Save $120', desc: 'Bumper to bumper, nothing held back. Everything in Gold plus full pet hair removal, stain removal, engine bay cleaning and a deep-clean shampoo — $120 less than building it piece by piece.' },
+  { id: 'gold', label: 'Gold', price: 239, wash: '3-step wash', badge: 'Save $75', desc: 'The extras everyone adds anyway — tire shine, leather conditioning, carpet shampoo, bug and tar removal, and pet hair removal, all bundled in for $75 less than adding them separately.' },
+  { id: 'diamond', label: 'Diamond', price: 279, wash: '3-step wash + hand wash and wax', badge: 'Save $180', desc: 'Bumper to bumper, nothing held back. Everything in Gold plus full pet hair removal, stain removal, engine bay cleaning, headliner cleaning and a deep-clean shampoo — $180 less than building it piece by piece.' },
 ];
 
 // Only Silver, Gold, and Diamond include an exterior wash -- these add-ons
@@ -38,10 +38,10 @@ const CHECKBOX_ADDONS = [
   { id: 'stainRemoval', label: 'Stain removal', price: 30, scope: 'interior', includedFrom: ['diamond'] },
   { id: 'carpetShampoo', label: 'Carpet shampoo', price: 30, scope: 'interior', includedFrom: ['gold', 'diamond'] },
   { id: 'leatherConditioning', label: 'Leather conditioning', price: 25, scope: 'interior', includedFrom: ['gold', 'diamond'] },
-  { id: 'headlinerCleaning', label: 'Headliner cleaning', price: 35, scope: 'interior', includedFrom: [] },
+  { id: 'headlinerCleaning', label: 'Headliner cleaning', price: 35, scope: 'interior', includedFrom: ['diamond'] },
   { id: 'tireShine', label: 'Tire shine', price: 20, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
   { id: 'engineCleaning', label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
-  { id: 'bugTarRemoval', label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: [] },
+  { id: 'bugTarRemoval', label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
   { id: 'headlightRestoration', label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
 ];
 
