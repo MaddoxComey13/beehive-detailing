@@ -224,12 +224,12 @@ function renderVehicleSizes() {
     const discount = VEHICLE_SIZE_DISCOUNT[state.package] || 0;
     return `
     <button type="button" data-vehicle="${v.id}"
-      class="option-card text-left rounded-3xl border p-6 sm:p-7 transition-colors ${state.vehicleSize === v.id ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
-      <div class="flex items-center justify-between mb-2">
-        <span class="font-bold text-lg">${v.label}</span>
-        <span class="text-lg font-bold tracking-tight text-ink/70">${price === 0 ? 'Included' : '+' + money(price)}</span>
+      class="option-card text-left rounded-3xl border p-4 sm:p-7 transition-colors ${state.vehicleSize === v.id ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
+      <div class="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between mb-2">
+        <span class="font-bold text-base sm:text-lg">${v.label}</span>
+        <span class="text-sm sm:text-lg font-bold tracking-tight text-ink/70">${price === 0 ? 'Included' : '+' + money(price)}</span>
       </div>
-      <p class="text-ink/60 text-sm">${v.desc}</p>
+      <p class="text-ink/60 text-xs sm:text-sm">${v.desc}</p>
       ${discount > 0 && v.price > 0 ? `<p class="text-accent text-xs mt-1">${Math.round(discount * 100)}% off for ${PACKAGES.find(p => p.id === state.package).label}</p>` : ''}
     </button>
   `;
