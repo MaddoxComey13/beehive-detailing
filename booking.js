@@ -246,17 +246,17 @@ function renderVehicleSizes() {
   // Show add vehicle options
   html += `<div>
     <div class="text-xs uppercase tracking-wider text-ink/50 font-semibold mb-3">Add vehicle:</div>
-    <div class="grid grid-cols-2 gap-3">`;
+    <div class="grid grid-cols-2 gap-4 sm:gap-5">`;
 
   VEHICLE_SIZES_BASE.forEach(v => {
     const price = vehiclePrice(v.id, state.package);
     const discount = VEHICLE_SIZE_DISCOUNT[state.package] || 0;
     html += `
-    <button type="button" class="add-vehicle option-card text-left rounded-2xl border border-ink/10 hover:border-ink/30 p-3 transition-colors" data-vehicle="${v.id}">
-      <span class="font-bold text-sm">${v.label}</span>
-      <p class="text-ink/60 text-xs mt-1">${v.desc}</p>
-      <span class="text-xs font-bold text-ink/70 mt-2 block">${price === 0 ? 'Included' : '+' + money(price)}</span>
-      ${discount > 0 && v.price > 0 ? `<p class="text-accent text-xs mt-1">${Math.round(discount * 100)}% off</p>` : ''}
+    <button type="button" class="add-vehicle option-card text-left rounded-2xl border border-ink/10 hover:border-ink/30 p-5 sm:p-6 transition-colors flex flex-col" data-vehicle="${v.id}">
+      <span class="font-bold text-base">${v.label}</span>
+      <p class="text-ink/60 text-sm mt-2 flex-1">${v.desc}</p>
+      <span class="text-xs font-bold text-ink/70 mt-3 block">${price === 0 ? 'Included' : '+' + money(price)}</span>
+      ${discount > 0 && v.price > 0 ? `<p class="text-accent text-xs font-semibold mt-2">${Math.round(discount * 100)}% off</p>` : ''}
     </button>`;
   });
 
