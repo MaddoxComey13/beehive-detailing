@@ -99,7 +99,7 @@ const TIME_WINDOWS = [
 const state = {
   step: 1,
   package: null,
-  vehicles: [],
+  vehicleSize: null,
   petHair: 'none',
   odorRemoval: 'none',
   checkboxAddons: new Set(),
@@ -124,10 +124,8 @@ function calcTotal() {
   let total = 0;
   const pkg = PACKAGES.find(p => p.id === state.package);
   if (pkg) total += pkg.price;
-  if (state.package && state.vehicles.length > 0) {
-    state.vehicles.forEach(vSize => {
-      total += vehiclePrice(vSize, state.package);
-    });
+  if (state.package && state.vehicleSize) {
+    total += vehiclePrice(state.vehicleSize, state.package);
   }
 
   RADIO_ADDONS.forEach(group => {
@@ -222,37 +220,18 @@ function renderPackages() {
 
 function renderVehicleSizes() {
   const el = document.getElementById('vehicleOptions');
-  const selected = state.vehicles.length > 0;
 
-  let html = '';
-
-  // Show selected vehicles
-  if (selected) {
-    html += `<div class="mb-6">
-      <div class="text-xs uppercase tracking-wider text-ink/50 font-semibold mb-2">Selected vehicles:</div>
-      <div class="space-y-2">`;
-    state.vehicles.forEach((vId, idx) => {
-      const v = VEHICLE_SIZES_BASE.find(x => x.id === vId);
-      const price = vehiclePrice(vId, state.package);
-      html += `
-        <div class="flex items-center justify-between rounded-2xl border border-accent bg-accent/5 px-4 py-2">
-          <span class="font-medium text-sm">${v.label} ${idx > 0 ? `(+${money(price)})` : `(+${money(price)})`}</span>
-          <button type="button" class="remove-vehicle text-accent hover:text-accent-hover font-semibold text-sm" data-index="${idx}">Remove</button>
-        </div>`;
-    });
-    html += `</div></div>`;
-  }
-
-  // Show add vehicle options
-  html += `<div>
-    <div class="text-xs uppercase tracking-wider text-ink/50 font-semibold mb-3">Add vehicle:</div>
+  html = `<div>
+    <div class="text-xs uppercase tracking-wider text-ink/50 font-semibold mb-3">What are we detailing?</div>
     <div class="grid grid-cols-2 gap-4 sm:gap-5">`;
 
   VEHICLE_SIZES_BASE.forEach(v => {
     const price = vehiclePrice(v.id, state.package);
     const discount = VEHICLE_SIZE_DISCOUNT[state.package] || 0;
+    const isSelected = state.vehicleSize === v.id;
+    const wrapClasses = isSelected ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30';
     html += `
-    <button type="button" class="add-vehicle option-card text-left rounded-2xl border border-ink/10 hover:border-ink/30 p-5 sm:p-6 transition-colors flex flex-col" data-vehicle="${v.id}">
+    <button type="button" class="vehicle-option option-card text-left rounded-2xl border ${wrapClasses} p-5 sm:p-6 transition-colors flex flex-col" data-vehicle="${v.id}">
       <span class="font-bold text-base">${v.label}</span>
       <p class="text-ink/60 text-sm mt-2 flex-1">${v.desc}</p>
       <span class="text-xs font-bold text-ink/70 mt-3 block">${price === 0 ? 'Included' : '+' + money(price)}</span>
@@ -414,7 +393,7 @@ function validateStep(n) {
       if (!state.package) { alert('Pick a package to continue.'); return false; }
       return true;
     case 2:
-      if (state.vehicles.length === 0) { alert('Add at least one vehicle to continue.'); return false; }
+      if (!state.vehicleSize) { alert('Select a vehicle size to continue.'); return false; }
       return true;
     case 3:
       return true; // add-ons are optional
@@ -465,7 +444,7 @@ async function submitBooking(payload) {
 function buildPayload() {
   return {
     package: state.package,
-    vehicles: state.vehicles,
+    vehicleSize: state.vehicleSize,
     addons: {
       petHair: state.petHair,
       odorRemoval: state.odorRemoval,
@@ -520,18 +499,11 @@ function init() {
   });
 
   document.getElementById('vehicleOptions').addEventListener('click', e => {
-    const addBtn = e.target.closest('.add-vehicle');
-    const rmBtn = e.target.closest('.remove-vehicle');
-    if (addBtn) {
-      state.vehicles.push(addBtn.dataset.vehicle);
-      renderVehicleSizes();
-      updateTotalBar();
-    } else if (rmBtn) {
-      const idx = parseInt(rmBtn.dataset.index, 10);
-      state.vehicles.splice(idx, 1);
-      renderVehicleSizes();
-      updateTotalBar();
-    }
+    const btn = e.target.closest('.vehicle-option');
+    if (!btn) return;
+    state.vehicleSize = btn.dataset.vehicle;
+    renderVehicleSizes();
+    updateTotalBar();
   });
 
   document.getElementById('radioAddons').addEventListener('click', e => {
