@@ -101,6 +101,12 @@
     "itemListElement": [
       {
         "@type": "Offer",
+        "itemOffered": { "@type": "Service", "name": "Quick" },
+        "price": "120",
+        "priceCurrency": "USD"
+      },
+      {
+        "@type": "Offer",
         "itemOffered": { "@type": "Service", "name": "Bronze" },
         "price": "144",
         "priceCurrency": "USD"
@@ -219,6 +225,27 @@
     </div>
 
     <div class="grid sm:grid-cols-2 gap-5">
+      <!-- Quick (casual) -->
+      <article class="group rounded-3xl bg-paper-card border border-ink/10 p-7 sm:p-8 hover:border-ink/30 transition-colors flex flex-col">
+        <div class="flex items-center justify-between mb-8">
+          <span class="text-xs uppercase tracking-wider text-ink/50">Quick</span>
+          <span class="w-2 h-2 rounded-full bg-ink/20 group-hover:bg-accent transition-colors"></span>
+        </div>
+        <div class="mb-2 flex items-baseline gap-1.5">
+          <span class="text-4xl font-extrabold tracking-tight">$120</span>
+          <span class="text-xs text-ink/50">90 min</span>
+        </div>
+        <p class="text-ink/60 text-sm mb-8">A light, casual refresh. Quick wash inside and out — no add-ons, no frills.</p>
+        <ul class="space-y-2.5 text-sm text-ink/80 mb-10">
+          <li class="flex gap-2.5"><svg class="w-4 h-4 mt-0.5 text-accent shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Interior vacuum &amp; wipe</li>
+          <li class="flex gap-2.5"><svg class="w-4 h-4 mt-0.5 text-accent shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Quick exterior wash</li>
+        </ul>
+        <a href="booking.html?pkg=quick" class="mt-auto inline-flex items-center justify-between border border-ink/15 px-5 py-3 rounded-full text-sm font-medium hover:bg-ink hover:text-white transition-colors cursor-pointer">
+          Choose Quick
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </article>
+
       <!-- Bronze (interior-only) -->
       <article class="group rounded-3xl bg-paper-card border border-ink/10 p-7 sm:p-8 hover:border-ink/30 transition-colors flex flex-col">
         <div class="flex items-center justify-between mb-8">

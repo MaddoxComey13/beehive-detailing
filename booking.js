@@ -1,22 +1,21 @@
 // Beehive Detailing — booking form logic
-// Tier model: Bronze / Silver / Gold / Diamond. Gold and Diamond bundle
-// certain add-ons in for free -- see CHECKBOX_ADDONS' includedFrom and
-// RADIO_ADDONS' includedLevel below for exactly what's included where.
-// Gold/Diamond descriptions cite real dollar savings vs. building the
-// same detail a la carte on Silver -- see the savings note below.
+// Tier model: Quick / Bronze / Silver / Gold / Diamond. Gold and Diamond
+// bundle certain add-ons in for free -- see CHECKBOX_ADDONS' includedFrom
+// and RADIO_ADDONS' includedLevel below for exactly what's included where.
 
 const PACKAGES = [
+  { id: 'quick', label: 'Quick', price: 120, wash: 'Quick wash', badge: null, desc: 'A light, 90-minute refresh. Interior vacuum & wipe, exterior wash — no add-ons.' },
   { id: 'bronze', label: 'Bronze', price: 144, wash: null, badge: null, desc: 'A fast, thorough interior refresh — vacuumed, steamed, and smelling brand new.' },
   { id: 'silver', label: 'Silver', price: 184, wash: '2-step wash', badge: null, desc: 'Full inside-and-out detail, built your way. Add exactly what your car needs.' },
   { id: 'gold', label: 'Gold', price: 239, wash: '3-step wash', badge: 'Save $75', desc: 'The extras everyone adds anyway — tire shine, leather conditioning, carpet shampoo, bug and tar removal, and pet hair removal, all bundled in for $75 less than adding them separately.' },
   { id: 'diamond', label: 'Diamond', price: 279, wash: '3-step wash + hand wash and wax', badge: 'Save $180', desc: 'Bumper to bumper, nothing held back. Everything in Gold plus full pet hair removal, stain removal, engine bay cleaning, headliner cleaning and a deep-clean shampoo — $180 less than building it piece by piece.' },
 ];
 
-// Only Silver, Gold, and Diamond include an exterior wash -- these add-ons
-// don't apply to Bronze (interior-only) and are hidden when it's selected.
-const EXTERIOR_PACKAGES = new Set(['silver', 'gold', 'diamond']);
+// Quick includes exterior wash; Bronze is interior-only; Silver/Gold/Diamond
+// have exterior wash. Exterior add-ons hidden for Bronze.
+const EXTERIOR_PACKAGES = new Set(['quick', 'silver', 'gold', 'diamond']);
 
-const VEHICLE_SIZE_DISCOUNT = { bronze: 0, silver: 0, gold: 0.10, diamond: 0.20 };
+const VEHICLE_SIZE_DISCOUNT = { quick: 0, bronze: 0, silver: 0, gold: 0.10, diamond: 0.20 };
 
 const VEHICLE_SIZES_BASE = [
   { id: 'standard', label: 'Standard', desc: 'Sedan, coupe, hatchback', price: 0 },
@@ -100,7 +99,7 @@ const TIME_WINDOWS = [
 const state = {
   step: 1,
   package: null,
-  vehicleSize: null,
+  vehicles: [],
   petHair: 'none',
   odorRemoval: 'none',
   checkboxAddons: new Set(),
@@ -125,7 +124,11 @@ function calcTotal() {
   let total = 0;
   const pkg = PACKAGES.find(p => p.id === state.package);
   if (pkg) total += pkg.price;
-  if (state.package && state.vehicleSize) total += vehiclePrice(state.vehicleSize, state.package);
+  if (state.package && state.vehicles.length > 0) {
+    state.vehicles.forEach(vSize => {
+      total += vehiclePrice(vSize, state.package);
+    });
+  }
 
   RADIO_ADDONS.forEach(group => {
     total += radioOptionPrice(group, state[group.id], state.package);
@@ -219,21 +222,47 @@ function renderPackages() {
 
 function renderVehicleSizes() {
   const el = document.getElementById('vehicleOptions');
-  el.innerHTML = VEHICLE_SIZES_BASE.map(v => {
+  const selected = state.vehicles.length > 0;
+
+  let html = '';
+
+  // Show selected vehicles
+  if (selected) {
+    html += `<div class="mb-6">
+      <div class="text-xs uppercase tracking-wider text-ink/50 font-semibold mb-2">Selected vehicles:</div>
+      <div class="space-y-2">`;
+    state.vehicles.forEach((vId, idx) => {
+      const v = VEHICLE_SIZES_BASE.find(x => x.id === vId);
+      const price = vehiclePrice(vId, state.package);
+      html += `
+        <div class="flex items-center justify-between rounded-2xl border border-accent bg-accent/5 px-4 py-2">
+          <span class="font-medium text-sm">${v.label} ${idx > 0 ? `(+${money(price)})` : `(+${money(price)})`}</span>
+          <button type="button" class="remove-vehicle text-accent hover:text-accent-hover font-semibold text-sm" data-index="${idx}">Remove</button>
+        </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // Show add vehicle options
+  html += `<div>
+    <div class="text-xs uppercase tracking-wider text-ink/50 font-semibold mb-3">Add vehicle:</div>
+    <div class="grid grid-cols-2 gap-3">`;
+
+  VEHICLE_SIZES_BASE.forEach(v => {
     const price = vehiclePrice(v.id, state.package);
     const discount = VEHICLE_SIZE_DISCOUNT[state.package] || 0;
-    return `
-    <button type="button" data-vehicle="${v.id}"
-      class="option-card text-left rounded-3xl border p-4 sm:p-7 transition-colors ${state.vehicleSize === v.id ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30'}">
-      <div class="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between mb-2">
-        <span class="font-bold text-base sm:text-lg">${v.label}</span>
-        <span class="text-sm sm:text-lg font-bold tracking-tight text-ink/70">${price === 0 ? 'Included' : '+' + money(price)}</span>
-      </div>
-      <p class="text-ink/60 text-xs sm:text-sm">${v.desc}</p>
-      ${discount > 0 && v.price > 0 ? `<p class="text-accent text-xs mt-1">${Math.round(discount * 100)}% off for ${PACKAGES.find(p => p.id === state.package).label}</p>` : ''}
-    </button>
-  `;
-  }).join('');
+    html += `
+    <button type="button" class="add-vehicle option-card text-left rounded-2xl border border-ink/10 hover:border-ink/30 p-3 transition-colors" data-vehicle="${v.id}">
+      <span class="font-bold text-sm">${v.label}</span>
+      <p class="text-ink/60 text-xs mt-1">${v.desc}</p>
+      <span class="text-xs font-bold text-ink/70 mt-2 block">${price === 0 ? 'Included' : '+' + money(price)}</span>
+      ${discount > 0 && v.price > 0 ? `<p class="text-accent text-xs mt-1">${Math.round(discount * 100)}% off</p>` : ''}
+    </button>`;
+  });
+
+  html += `</div></div>`;
+
+  el.innerHTML = html;
 }
 
 function renderAddons() {
@@ -385,7 +414,7 @@ function validateStep(n) {
       if (!state.package) { alert('Pick a package to continue.'); return false; }
       return true;
     case 2:
-      if (!state.vehicleSize) { alert('Pick your vehicle size to continue.'); return false; }
+      if (state.vehicles.length === 0) { alert('Add at least one vehicle to continue.'); return false; }
       return true;
     case 3:
       return true; // add-ons are optional
@@ -436,7 +465,7 @@ async function submitBooking(payload) {
 function buildPayload() {
   return {
     package: state.package,
-    vehicleSize: state.vehicleSize,
+    vehicles: state.vehicles,
     addons: {
       petHair: state.petHair,
       odorRemoval: state.odorRemoval,
@@ -491,13 +520,18 @@ function init() {
   });
 
   document.getElementById('vehicleOptions').addEventListener('click', e => {
-    const btn = e.target.closest('[data-vehicle]');
-    if (!btn) return;
-    state.vehicleSize = btn.dataset.vehicle;
-    pruneInvalidSelections();
-    renderVehicleSizes();
-    renderAddons();
-    updateTotalBar();
+    const addBtn = e.target.closest('.add-vehicle');
+    const rmBtn = e.target.closest('.remove-vehicle');
+    if (addBtn) {
+      state.vehicles.push(addBtn.dataset.vehicle);
+      renderVehicleSizes();
+      updateTotalBar();
+    } else if (rmBtn) {
+      const idx = parseInt(rmBtn.dataset.index, 10);
+      state.vehicles.splice(idx, 1);
+      renderVehicleSizes();
+      updateTotalBar();
+    }
   });
 
   document.getElementById('radioAddons').addEventListener('click', e => {

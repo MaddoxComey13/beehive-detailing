@@ -48,14 +48,15 @@ const REQUEST_CREATE = `
 // Mirrors booking.js's tier model exactly -- this is what actually prices
 // the real Jobber request, so it must never trust the client's own total.
 const PACKAGE_LABELS = {
+  quick: { label: 'Quick', price: 120 },
   bronze: { label: 'Bronze', price: 144 },
   silver: { label: 'Silver', price: 184 },
   gold: { label: 'Gold', price: 239 },
   diamond: { label: 'Diamond', price: 279 },
 };
 
-const EXTERIOR_PACKAGES = new Set(['silver', 'gold', 'diamond']);
-const VEHICLE_SIZE_DISCOUNT = { bronze: 0, silver: 0, gold: 0.10, diamond: 0.20 };
+const EXTERIOR_PACKAGES = new Set(['quick', 'silver', 'gold', 'diamond']);
+const VEHICLE_SIZE_DISCOUNT = { quick: 0, bronze: 0, silver: 0, gold: 0.10, diamond: 0.20 };
 
 const VEHICLE_LABELS = {
   standard: { label: 'Standard', price: 0 },
@@ -131,12 +132,15 @@ function splitName(fullName) {
 }
 
 function validatePayload(body) {
-  const required = ['package', 'vehicleSize', 'date', 'timeWindow', 'address', 'contact', 'total'];
+  const required = ['package', 'vehicles', 'date', 'timeWindow', 'address', 'contact', 'total'];
   for (const field of required) {
     if (!body[field]) throw new Error(`Missing field: ${field}`);
   }
   if (!PACKAGE_LABELS[body.package]) throw new Error(`Unknown package: ${body.package}`);
-  if (!VEHICLE_LABELS[body.vehicleSize]) throw new Error(`Unknown vehicle size: ${body.vehicleSize}`);
+  if (!Array.isArray(body.vehicles) || body.vehicles.length === 0) throw new Error('At least one vehicle required.');
+  body.vehicles.forEach(v => {
+    if (!VEHICLE_LABELS[v]) throw new Error(`Unknown vehicle size: ${v}`);
+  });
   const addr = body.address;
   if (!addr.line1 || !addr.city || !addr.zip) throw new Error('Incomplete address.');
   const contact = body.contact;
@@ -149,11 +153,17 @@ function buildLineItems(body) {
   const pkg = PACKAGE_LABELS[pkgId];
   items.push(lineItem(pkg.label, pkg.price));
 
-  const sizePrice = vehiclePrice(body.vehicleSize, pkgId);
-  if (sizePrice > 0) {
-    const size = VEHICLE_LABELS[body.vehicleSize];
-    items.push(lineItem(`Vehicle size: ${size.label}`, sizePrice));
-  }
+  // Add line items for each vehicle
+  body.vehicles.forEach((vId, idx) => {
+    const sizePrice = vehiclePrice(vId, pkgId);
+    const size = VEHICLE_LABELS[vId];
+    const label = body.vehicles.length > 1 ? `Vehicle ${idx + 1}: ${size.label}` : `Vehicle: ${size.label}`;
+    if (sizePrice > 0) {
+      items.push(lineItem(label, sizePrice));
+    } else if (sizePrice === 0 && body.vehicles.length > 1) {
+      items.push(lineItem(label, 0));
+    }
+  });
 
   const addons = body.addons || {};
   ['petHair', 'odorRemoval'].forEach((groupKey) => {
@@ -264,12 +274,13 @@ export default async (req) => {
     if (!propertyId) throw new Error('Property creation returned no ID.');
 
     const pkg = PACKAGE_LABELS[body.package];
-    const size = VEHICLE_LABELS[body.vehicleSize];
+    const sizes = body.vehicles.map(v => VEHICLE_LABELS[v].label);
+    const sizeLabel = sizes.length > 1 ? `${sizes.length} vehicles` : sizes[0];
     const requestResult = await jobberGraphQL(REQUEST_CREATE, {
       input: {
         clientId,
         propertyId,
-        title: `${pkg.label} — ${size.label} — Beehive Detailing booking form`,
+        title: `${pkg.label} — ${sizeLabel} — Beehive Detailing booking form`,
         lineItems: buildLineItems(body),
       },
     });
