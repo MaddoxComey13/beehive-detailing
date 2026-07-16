@@ -12,8 +12,9 @@ const PACKAGES = [
 ];
 
 // Quick includes exterior wash; Bronze is interior-only; Silver/Gold/Diamond
-// have exterior wash. Exterior add-ons hidden for Bronze.
+// have exterior wash. Exterior add-ons hidden for Bronze. Quick has no add-ons.
 const EXTERIOR_PACKAGES = new Set(['quick', 'silver', 'gold', 'diamond']);
+const NO_ADDONS_PACKAGES = new Set(['quick']);
 
 const VEHICLE_SIZE_DISCOUNT = { quick: 0, bronze: 0, silver: 0, gold: 0.10, diamond: 0.20 };
 
@@ -24,8 +25,16 @@ const VEHICLE_SIZES_BASE = [
   { id: 'truck', label: 'Truck', desc: 'Pickup, full-size SUV', price: 40 },
 ];
 
+const QUICK_VEHICLE_SIZES = [
+  { id: 'standard', label: 'Standard', desc: 'Sedan, coupe, hatchback', price: 0 },
+  { id: 'midsize', label: 'Midsize', desc: 'Crossover, wagon', price: 5 },
+  { id: 'suv', label: 'SUV', desc: '3-row SUV, minivan', price: 10 },
+  { id: 'truck', label: 'Truck', desc: 'Pickup, full-size SUV', price: 15 },
+];
+
 function vehiclePrice(sizeId, pkgId) {
-  const base = VEHICLE_SIZES_BASE.find(v => v.id === sizeId).price;
+  const sizeList = pkgId === 'quick' ? QUICK_VEHICLE_SIZES : VEHICLE_SIZES_BASE;
+  const base = sizeList.find(v => v.id === sizeId).price;
   const discount = VEHICLE_SIZE_DISCOUNT[pkgId] || 0;
   return Math.round(base * (1 - discount));
 }
@@ -250,27 +259,31 @@ function renderVehicleSizes() {
 
 function renderAddons() {
   const radioEl = document.getElementById('radioAddons');
-  const visibleRadioGroups = RADIO_ADDONS.filter(g => g.scope !== 'exterior' || EXTERIOR_PACKAGES.has(state.package));
-  radioEl.innerHTML = visibleRadioGroups.map(group => {
-    const includedId = group.includedLevel && group.includedLevel[state.package];
-    return `
-    <div class="mb-6">
-      <div class="text-sm font-semibold mb-3">${group.label}${includedId ? ' <span class="text-accent font-normal">(partly included)</span>' : ''}</div>
-      <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="${group.label}">
-        ${group.options.map(o => {
-          const price = radioOptionPrice(group, o.id, state.package);
-          const isFree = price === 0 && o.id !== 'none';
-          return `
-          <button type="button" data-radio-group="${group.id}" data-radio-value="${o.id}"
-            class="option-pill rounded-full border px-3 py-2.5 text-sm font-medium transition-colors ${state[group.id] === o.id ? 'border-accent bg-accent text-white' : 'border-ink/15 hover:border-ink/30'}">
-            ${o.label}${isFree ? ' ✓' : price ? ` +${money(price)}` : ''}
-          </button>
-        `;
-        }).join('')}
+  if (NO_ADDONS_PACKAGES.has(state.package)) {
+    radioEl.innerHTML = `<div class="p-4 rounded-2xl bg-ink/5 border border-ink/10"><p class="text-sm text-ink/60">Add-ons are not available with the Quick refresh package.</p></div>`;
+  } else {
+    const visibleRadioGroups = RADIO_ADDONS.filter(g => g.scope !== 'exterior' || EXTERIOR_PACKAGES.has(state.package));
+    radioEl.innerHTML = visibleRadioGroups.map(group => {
+      const includedId = group.includedLevel && group.includedLevel[state.package];
+      return `
+      <div class="mb-6">
+        <div class="text-sm font-semibold mb-3">${group.label}${includedId ? ' <span class="text-accent font-normal">(partly included)</span>' : ''}</div>
+        <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="${group.label}">
+          ${group.options.map(o => {
+            const price = radioOptionPrice(group, o.id, state.package);
+            const isFree = price === 0 && o.id !== 'none';
+            return `
+            <button type="button" data-radio-group="${group.id}" data-radio-value="${o.id}"
+              class="option-pill rounded-full border px-3 py-2.5 text-sm font-medium transition-colors ${state[group.id] === o.id ? 'border-accent bg-accent text-white' : 'border-ink/15 hover:border-ink/30'}">
+              ${o.label}${isFree ? ' ✓' : price ? ` +${money(price)}` : ''}
+            </button>
+          `;
+          }).join('')}
+        </div>
       </div>
-    </div>
-  `;
-  }).join('');
+    `;
+    }).join('');
+  }
 
   function checkboxCard(a) {
     const included = isIncludedCheckbox(a);
@@ -291,20 +304,24 @@ function renderAddons() {
   `;
   }
 
-  const visible = visibleCheckboxAddons();
-  const interiorAddons = visible.filter(a => a.scope === 'interior');
-  const exteriorAddons = visible.filter(a => a.scope === 'exterior');
   const checkEl = document.getElementById('checkboxAddons');
-  checkEl.innerHTML = `
-    ${interiorAddons.length ? `
-      <div class="text-xs font-semibold text-ink/50 uppercase tracking-wider mb-2">Interior extras</div>
-      <div class="grid grid-cols-2 gap-2 mb-5">${interiorAddons.map(checkboxCard).join('')}</div>
-    ` : ''}
-    ${exteriorAddons.length ? `
-      <div class="text-xs font-semibold text-ink/50 uppercase tracking-wider mb-2">Exterior extras</div>
-      <div class="grid grid-cols-2 gap-2">${exteriorAddons.map(checkboxCard).join('')}</div>
-    ` : ''}
-  `;
+  if (NO_ADDONS_PACKAGES.has(state.package)) {
+    checkEl.innerHTML = '';
+  } else {
+    const visible = visibleCheckboxAddons();
+    const interiorAddons = visible.filter(a => a.scope === 'interior');
+    const exteriorAddons = visible.filter(a => a.scope === 'exterior');
+    checkEl.innerHTML = `
+      ${interiorAddons.length ? `
+        <div class="text-xs font-semibold text-ink/50 uppercase tracking-wider mb-2">Interior extras</div>
+        <div class="grid grid-cols-2 gap-2 mb-5">${interiorAddons.map(checkboxCard).join('')}</div>
+      ` : ''}
+      ${exteriorAddons.length ? `
+        <div class="text-xs font-semibold text-ink/50 uppercase tracking-wider mb-2">Exterior extras</div>
+        <div class="grid grid-cols-2 gap-2">${exteriorAddons.map(checkboxCard).join('')}</div>
+      ` : ''}
+    `;
+  }
 }
 
 function renderTimeWindows() {
