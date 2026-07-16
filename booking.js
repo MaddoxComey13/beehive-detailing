@@ -221,9 +221,9 @@ function renderPackages() {
 function renderVehicleSizes() {
   const el = document.getElementById('vehicleOptions');
 
-  html = `<div class="grid gap-4">
-    <div class="text-xs uppercase tracking-wider text-ink/50 font-semibold">Pick your vehicle size:</div>
-    <div class="grid grid-cols-2 gap-4">`;
+  html = `<div class="space-y-6">
+    <div class="text-sm uppercase tracking-wider text-ink/50 font-semibold">Pick your vehicle size:</div>
+    <div class="grid grid-cols-2 gap-6 sm:gap-5">`;
 
   VEHICLE_SIZES_BASE.forEach(v => {
     const price = vehiclePrice(v.id, state.package);
@@ -231,12 +231,14 @@ function renderVehicleSizes() {
     const isSelected = state.vehicleSize === v.id;
     const wrapClasses = isSelected ? 'border-2 border-accent bg-accent/5' : 'border border-ink/10 hover:border-ink/30';
     html += `
-    <button type="button" class="vehicle-option option-card text-left rounded-3xl ${wrapClasses} p-6 sm:p-7 transition-all flex flex-col" data-vehicle="${v.id}">
-      <span class="font-bold text-lg">${v.label}</span>
-      <p class="text-ink/60 text-sm mt-3 flex-1">${v.desc}</p>
-      <div class="mt-4 pt-4 border-t border-ink/10">
-        <span class="text-sm font-bold text-ink/70">${price === 0 ? 'Included' : '+' + money(price)}</span>
-        ${discount > 0 && v.price > 0 ? `<p class="text-accent text-xs font-semibold mt-2">${Math.round(discount * 100)}% discount</p>` : ''}
+    <button type="button" class="vehicle-option option-card text-left rounded-3xl ${wrapClasses} p-7 sm:p-8 transition-all flex flex-col justify-between min-h-64" data-vehicle="${v.id}">
+      <div>
+        <span class="font-extrabold text-xl block">${v.label}</span>
+        <p class="text-ink/60 text-sm mt-4">${v.desc}</p>
+      </div>
+      <div class="mt-6 pt-6 border-t border-ink/10">
+        <div class="text-base font-bold text-ink/70 mb-2">${price === 0 ? 'Included' : '+' + money(price)}</div>
+        ${discount > 0 && v.price > 0 ? `<p class="text-accent text-sm font-bold">${Math.round(discount * 100)}% discount</p>` : ''}
       </div>
     </button>`;
   });
