@@ -230,11 +230,12 @@ function renderPackages() {
 function renderVehicleSizes() {
   const el = document.getElementById('vehicleOptions');
 
-  html = `<div class="space-y-6">
+  const vehicleList = state.package === 'quick' ? QUICK_VEHICLE_SIZES : VEHICLE_SIZES_BASE;
+  let html = `<div class="space-y-6">
     <div class="text-sm uppercase tracking-wider text-ink/50 font-semibold">Pick your vehicle size:</div>
     <div class="grid grid-cols-2 gap-6 sm:gap-5">`;
 
-  VEHICLE_SIZES_BASE.forEach(v => {
+  vehicleList.forEach(v => {
     const price = vehiclePrice(v.id, state.package);
     const discount = VEHICLE_SIZE_DISCOUNT[state.package] || 0;
     const isSelected = state.vehicleSize === v.id;
