@@ -462,7 +462,7 @@ async function submitBooking(payload) {
 function buildPayload() {
   return {
     package: state.package,
-    vehicleSize: state.vehicleSize,
+    vehicles: [state.vehicleSize],
     addons: {
       petHair: state.petHair,
       odorRemoval: state.odorRemoval,
