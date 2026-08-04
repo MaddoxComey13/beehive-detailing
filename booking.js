@@ -99,6 +99,7 @@ function checkboxAddonPrice(addon, pkgId) {
 }
 
 const TIME_WINDOWS = [
+  { id: 'early', label: '7:00 AM – 9:00 AM', recommended: true },
   { id: 'morning', label: '10:00 AM – 12:00 PM' },
   { id: 'midday', label: '12:00 PM – 2:00 PM' },
   { id: 'afternoon', label: '2:00 PM – 4:00 PM' },
@@ -325,8 +326,9 @@ function renderTimeWindows() {
   const el = document.getElementById('timeOptions');
   el.innerHTML = TIME_WINDOWS.map(t => `
     <button type="button" data-time="${t.id}"
-      class="option-pill rounded-full border px-4 py-3 text-sm font-medium transition-colors ${state.timeWindow === t.id ? 'border-accent bg-accent text-white' : 'border-ink/15 hover:border-ink/30'}">
+      class="option-pill rounded-full border px-4 py-3 text-sm font-medium transition-colors relative ${state.timeWindow === t.id ? 'border-accent bg-accent text-white' : 'border-ink/15 hover:border-ink/30'}">
       ${t.label}
+      ${t.recommended ? '<span class="absolute -top-2 -right-2 w-3 h-3 rounded-full bg-accent"></span>' : ''}
     </button>
   `).join('');
 }
@@ -499,7 +501,7 @@ function init() {
 
   const dateInput = document.getElementById('dateInput');
   const today = new Date();
-  const minDate = new Date(today.getTime() + 24 * 60 * 60 * 1000); // earliest tomorrow
+  const minDate = new Date(today.getTime() + 12 * 60 * 60 * 1000); // earliest in 12 hours (12-hour advance notice required)
   const maxDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
   dateInput.min = minDate.toISOString().split('T')[0];
   dateInput.max = maxDate.toISOString().split('T')[0];
