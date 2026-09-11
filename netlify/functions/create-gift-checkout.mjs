@@ -57,7 +57,8 @@ export default async (req) => {
     return json({ ok: true, url: session.url });
   } catch (err) {
     console.error('create-gift-checkout failed:', err);
-    return json({ ok: false, error: 'Could not start checkout. Please try again or contact us.' }, 500);
+    // TEMP DEBUG: surface the real error to diagnose go-live issue. Revert.
+    return json({ ok: false, error: 'Could not start checkout. Please try again or contact us.', detail: String(err && err.message || err) }, 500);
   }
 };
 
