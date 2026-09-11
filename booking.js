@@ -50,7 +50,6 @@ const CHECKBOX_ADDONS = [
   { id: 'tireShine', label: 'Tire shine', price: 20, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
   { id: 'engineCleaning', label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
   { id: 'bugTarRemoval', label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
-  { id: 'headlightRestoration', label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
 ];
 
 // Radio add-ons: pick at most one option per group. `includedLevel` maps a
@@ -122,6 +121,7 @@ const state = {
   fullName: '',
   phone: '',
   email: '',
+  gift: null, // { code, packageId, packageLabel, buyerName } when a gift is applied
 };
 
 const TOTAL_STEPS = 6;
@@ -147,6 +147,19 @@ function calcTotal() {
   });
 
   return total;
+}
+
+// A gift prepays the base price of its package (standard-vehicle value). The
+// customer still pays for a larger vehicle and any add-ons, so we credit only
+// the package base price and never let the amount due go negative.
+function giftCredit() {
+  if (!state.gift) return 0;
+  const pkg = PACKAGES.find(p => p.id === state.gift.packageId);
+  return pkg ? pkg.price : 0;
+}
+
+function amountDue() {
+  return Math.max(0, calcTotal() - giftCredit());
 }
 
 function isIncludedCheckbox(addon) {
@@ -212,9 +225,12 @@ function renderPackages() {
     const themeSelected = selected ? themeAlways : null;
     const wrapClasses = themeSelected ? 'border-2' : (selected ? 'border-accent bg-accent/5' : 'border-ink/10 hover:border-ink/30');
     const cardStyle = themeSelected ? `${themeSelected.cardStyle}${themeSelected.textColor ? `color:${themeSelected.textColor};` : ''}` : '';
+    // When a gift is applied it's tied to one package, so lock the others out.
+    const lockedOut = state.gift && p.id !== state.gift.packageId;
+    const lockClasses = lockedOut ? 'opacity-40 pointer-events-none' : '';
     return `
-    <button type="button" data-package="${p.id}"
-      class="option-card text-left rounded-3xl border ${wrapClasses} p-6 sm:p-7 transition-colors relative"
+    <button type="button" data-package="${p.id}" ${lockedOut ? 'disabled' : ''}
+      class="option-card text-left rounded-3xl border ${wrapClasses} ${lockClasses} p-6 sm:p-7 transition-colors relative"
       style="${cardStyle}">
       ${p.badge ? `<span class="absolute -top-3 left-6 text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full font-semibold" style="${themeAlways.badgeStyle}">${p.badge}</span>` : ''}
       <div class="flex items-center justify-between mb-2 mt-1">
@@ -371,16 +387,38 @@ function renderReview() {
         <span class="text-ink/60 text-sm">Contact</span>
         <span class="font-semibold text-right">${state.fullName}<br/><span class="text-ink/60 text-sm font-normal">${state.phone} · ${state.email}</span></span>
       </div>
-      <div class="border-t border-ink/10 pt-5 flex justify-between items-baseline">
-        <span class="font-bold text-lg">Total</span>
-        <span class="font-extrabold text-2xl">${money(calcTotal())}</span>
-      </div>
+      ${state.gift ? `
+        <div class="border-t border-ink/10 pt-4 flex justify-between items-baseline">
+          <span class="text-ink/60 text-sm">Service total</span>
+          <span class="font-semibold">${money(calcTotal())}</span>
+        </div>
+        <div class="flex justify-between items-baseline" style="color:#8A6A08;">
+          <span class="text-sm">🎁 Gift prepaid (${state.gift.packageLabel})</span>
+          <span class="font-semibold">−${money(giftCredit())}</span>
+        </div>
+        <div class="border-t border-ink/10 pt-5 flex justify-between items-baseline">
+          <span class="font-bold text-lg">Due at service</span>
+          <span class="font-extrabold text-2xl">${money(amountDue())}</span>
+        </div>
+      ` : `
+        <div class="border-t border-ink/10 pt-5 flex justify-between items-baseline">
+          <span class="font-bold text-lg">Total</span>
+          <span class="font-extrabold text-2xl">${money(calcTotal())}</span>
+        </div>
+      `}
     </div>
   `;
 }
 
 function updateTotalBar() {
-  document.getElementById('runningTotal').textContent = money(calcTotal());
+  const label = document.getElementById('totalLabel');
+  if (state.gift) {
+    document.getElementById('runningTotal').textContent = money(amountDue());
+    if (label) label.textContent = 'Due at service';
+  } else {
+    document.getElementById('runningTotal').textContent = money(calcTotal());
+    if (label) label.textContent = 'Total';
+  }
 }
 
 function updateProgress() {
@@ -485,7 +523,58 @@ function buildPayload() {
       email: state.email,
     },
     total: calcTotal(),
+    giftCode: state.gift ? state.gift.code : undefined,
   };
+}
+
+// ---- Gift code apply / remove --------------------------------------------
+function showGiftBanner() {
+  const banner = document.getElementById('giftBanner');
+  const from = state.gift.buyerName ? ` from ${state.gift.buyerName}` : '';
+  document.getElementById('giftBannerTitle').textContent = `${state.gift.packageLabel} — prepaid 🎉`;
+  document.getElementById('giftBannerMsg').textContent =
+    `Your gift${from} covers the ${state.gift.packageLabel} for a standard vehicle. Add extras or a larger vehicle below — you'll only pay the difference.`;
+  banner.classList.remove('hidden');
+  document.getElementById('giftEntry').classList.add('hidden');
+}
+
+async function applyGiftCode(rawCode) {
+  const code = (rawCode || '').trim().toUpperCase();
+  const errEl = document.getElementById('giftError');
+  const hideErr = () => errEl && errEl.classList.add('hidden');
+  const showErr = (m) => { if (errEl) { errEl.textContent = m; errEl.classList.remove('hidden'); } };
+  hideErr();
+  if (!code) { showErr('Enter your gift code.'); return { ok: false }; }
+
+  try {
+    const res = await fetch(`/.netlify/functions/validate-gift?code=${encodeURIComponent(code)}`);
+    const data = await res.json();
+    if (!res.ok || !data.ok) { showErr(data.error || 'Could not apply that code.'); return { ok: false }; }
+
+    state.gift = { code: data.code, packageId: data.packageId, packageLabel: data.packageLabel, buyerName: data.buyerName };
+    state.package = data.packageId; // lock the flow to the gifted package
+    pruneInvalidSelections();
+    renderPackages();
+    renderVehicleSizes();
+    renderAddons();
+    showGiftBanner();
+    updateTotalBar();
+    return { ok: true };
+  } catch (e) {
+    console.error('applyGiftCode failed:', e);
+    showErr('Could not reach the server. Try again.');
+    return { ok: false };
+  }
+}
+
+function removeGift() {
+  state.gift = null;
+  document.getElementById('giftBanner').classList.add('hidden');
+  document.getElementById('giftEntry').classList.remove('hidden');
+  const input = document.getElementById('giftCodeInput');
+  if (input) input.value = '';
+  renderPackages();
+  updateTotalBar();
 }
 
 function init() {
@@ -493,6 +582,7 @@ function init() {
   const params = new URLSearchParams(window.location.search);
   const pkgParam = params.get('pkg');
   if (PACKAGES.some(p => p.id === pkgParam)) state.package = pkgParam;
+  const giftParam = params.get('gift');
 
   renderPackages();
   renderVehicleSizes();
@@ -576,6 +666,20 @@ function init() {
       submitBtn.textContent = 'Confirm & send request';
     }
   });
+
+  document.getElementById('giftApplyBtn').addEventListener('click', () => {
+    applyGiftCode(document.getElementById('giftCodeInput').value);
+  });
+  document.getElementById('giftCodeInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); applyGiftCode(e.target.value); }
+  });
+  document.getElementById('giftRemove').addEventListener('click', removeGift);
+
+  // Arriving from a gift email link (?gift=CODE): pre-fill and auto-apply.
+  if (giftParam) {
+    document.getElementById('giftCodeInput').value = giftParam.toUpperCase();
+    applyGiftCode(giftParam);
+  }
 
   updateTotalBar();
   showStep(1);

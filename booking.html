@@ -24,6 +24,7 @@
           ink:    { DEFAULT: '#0F172A', soft: '#334155', mute: '#475569' },
           paper:  { DEFAULT: '#F8FAFC', card: '#FFFFFF' },
           accent: { DEFAULT: '#DC2626', hover: '#B91C1C' },
+          gold:   { DEFAULT: '#B8860B', light: '#E0A82E' },
         },
         letterSpacing: { tightest: '-0.05em' },
       },
@@ -58,11 +59,32 @@
 
 <main id="formWizard" class="max-w-2xl mx-auto px-5 sm:px-6 py-10">
 
+  <!-- GIFT APPLIED BANNER -->
+  <div id="giftBanner" class="hidden mb-8 rounded-2xl border-2 p-5 flex items-start gap-3" style="border-color:#B8860B;background:#FBF3DC;">
+    <span class="text-xl">🎁</span>
+    <div class="flex-1">
+      <p class="font-bold" style="color:#8A6A08;" id="giftBannerTitle">Gift applied</p>
+      <p class="text-sm mt-1" style="color:#6B5308;" id="giftBannerMsg"></p>
+    </div>
+    <button id="giftRemove" type="button" class="text-xs font-semibold underline shrink-0" style="color:#8A6A08;">Remove</button>
+  </div>
+
   <!-- STEP 1: PACKAGE -->
   <section data-step="1">
     <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">01 — Package</div>
     <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(1.75rem,6vw,2.75rem)] mb-8">Pick your package.</h1>
     <div id="packageOptions" class="grid gap-4 sm:grid-cols-2"></div>
+
+    <!-- Manual gift code entry (auto-filled when arriving from a gift email link) -->
+    <div id="giftEntry" class="mt-8 pt-6 border-t border-ink/10">
+      <label for="giftCodeInput" class="block text-sm font-semibold mb-2">Have a gift code?</label>
+      <div class="flex gap-2">
+        <input id="giftCodeInput" type="text" placeholder="GIFT-XXXX-XXXX" autocomplete="off"
+          class="flex-1 rounded-2xl border border-ink/15 px-5 py-3.5 text-base uppercase tracking-wide focus:outline-none focus:border-accent" />
+        <button id="giftApplyBtn" type="button" class="px-5 py-3.5 rounded-2xl text-sm font-semibold bg-ink text-white hover:bg-accent transition-colors cursor-pointer shrink-0">Apply</button>
+      </div>
+      <p id="giftError" class="hidden text-accent text-xs mt-2"></p>
+    </div>
   </section>
 
   <!-- STEP 2: VEHICLE SIZE -->
@@ -175,7 +197,7 @@
 <div class="fixed bottom-0 left-0 right-0 z-50 bg-paper/95 backdrop-blur-md border-t border-ink/10">
   <div class="max-w-2xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between gap-4">
     <div>
-      <div class="text-xs text-ink/50 uppercase tracking-wider">Total</div>
+      <div id="totalLabel" class="text-xs text-ink/50 uppercase tracking-wider">Total</div>
       <div id="runningTotal" class="text-2xl font-extrabold tracking-tight">$144</div>
     </div>
     <div class="flex items-center gap-3">

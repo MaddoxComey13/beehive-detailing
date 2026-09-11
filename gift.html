@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gift a Detail — Beehive Detailing | Salt Lake City</title>
+<meta name="description" content="Give the gift of a showroom-clean car. Buy a prepaid mobile detail for anyone in Salt Lake City and the Wasatch Front — they book, we come to them." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://beehivedetailingco.com/gift.html" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Beehive Detailing" />
+<meta property="og:title" content="Gift a Detail — Beehive Detailing" />
+<meta property="og:description" content="Give the gift of a showroom-clean car. Prepaid mobile detailing gift cards." />
+<meta property="og:url" content="https://beehivedetailingco.com/gift.html" />
+
+<meta name="theme-color" content="#DC2626" />
+<link rel="icon" type="image/png" href="logo.png" />
+<link rel="apple-touch-icon" href="logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+        colors: {
+          ink:    { DEFAULT: '#0F172A', soft: '#334155', mute: '#475569' },
+          paper:  { DEFAULT: '#F8FAFC', card: '#FFFFFF' },
+          accent: { DEFAULT: '#DC2626', hover: '#B91C1C' },
+          gold:   { DEFAULT: '#B8860B', light: '#E0A82E' },
+        },
+        letterSpacing: { tightest: '-0.05em' },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-paper text-ink font-sans antialiased min-h-screen pb-28">
+
+<!-- NAV -->
+<header class="sticky top-0 z-50 bg-paper/90 backdrop-blur-md border-b border-ink/10">
+  <nav class="max-w-2xl mx-auto flex items-center justify-between px-5 sm:px-6 py-4">
+    <a href="index.html" class="flex items-center gap-2.5 cursor-pointer">
+      <img src="logo.png" alt="Beehive Detailing logo" class="w-8 h-8 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+      <span class="hidden w-2.5 h-2.5 rounded-full bg-accent"></span>
+      <span class="font-bold tracking-tight text-[15px]">BEEHIVE</span>
+      <span class="text-ink/40 text-[15px] tracking-tight hidden sm:inline">Detailing</span>
+    </a>
+    <a href="booking.html" class="text-xs uppercase tracking-wider text-ink/50 hover:text-accent transition-colors">Book a detail →</a>
+  </nav>
+</header>
+
+<!-- STATUS BANNERS (shown after Stripe redirect) -->
+<div id="successBanner" class="hidden max-w-2xl mx-auto px-5 sm:px-6 pt-6">
+  <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 flex items-start gap-3">
+    <span class="text-xl">✅</span>
+    <div>
+      <p class="font-bold text-emerald-900">Gift sent!</p>
+      <p class="text-sm text-emerald-800 mt-1">Your payment went through and we've emailed the gift code to your recipient. You'll get a receipt from Stripe. Thank you!</p>
+    </div>
+  </div>
+</div>
+<div id="cancelBanner" class="hidden max-w-2xl mx-auto px-5 sm:px-6 pt-6">
+  <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex items-start gap-3">
+    <span class="text-xl">↩️</span>
+    <div>
+      <p class="font-bold text-amber-900">Checkout canceled</p>
+      <p class="text-sm text-amber-800 mt-1">No worries — nothing was charged. Pick up where you left off below whenever you're ready.</p>
+    </div>
+  </div>
+</div>
+
+<main class="max-w-2xl mx-auto px-5 sm:px-6 py-10">
+
+  <!-- HERO -->
+  <div class="text-xs uppercase tracking-[0.18em] text-ink/50 mb-3">Gift card</div>
+  <h1 class="font-extrabold tracking-tightest leading-[0.95] text-[clamp(2rem,7vw,3.25rem)] mb-4">Give a showroom-<span class="text-accent">clean</span> car.</h1>
+  <p class="text-ink/60 leading-relaxed mb-10 max-w-lg">Buy a prepaid detail for anyone in Salt Lake City &amp; the Wasatch Front. They get a code, book in 60 seconds, and we come to them. Perfect for birthdays, new cars, and "you've earned it."</p>
+
+  <!-- 1. PACKAGE -->
+  <section class="mb-10">
+    <div class="text-sm font-semibold mb-4">1 · Choose a gift</div>
+    <div id="giftPackages" class="grid gap-4"></div>
+  </section>
+
+  <!-- 2. FROM -->
+  <section class="mb-10">
+    <div class="text-sm font-semibold mb-4">2 · From you</div>
+    <div class="grid gap-4">
+      <div>
+        <label for="buyerName" class="block text-sm font-semibold mb-2">Your name <span class="text-accent">*</span></label>
+        <input type="text" id="buyerName" required
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+      <div>
+        <label for="buyerEmail" class="block text-sm font-semibold mb-2">Your email <span class="text-accent">*</span></label>
+        <input type="email" id="buyerEmail" required placeholder="For your receipt"
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. TO -->
+  <section class="mb-8">
+    <div class="text-sm font-semibold mb-4">3 · For them</div>
+    <div class="grid gap-4">
+      <div>
+        <label for="recipientName" class="block text-sm font-semibold mb-2">Recipient's name <span class="text-accent">*</span></label>
+        <input type="text" id="recipientName" required
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+      <div>
+        <label for="recipientEmail" class="block text-sm font-semibold mb-2">Recipient's email <span class="text-accent">*</span></label>
+        <input type="email" id="recipientEmail" required placeholder="We'll email them the gift code"
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent" />
+      </div>
+      <div>
+        <label for="giftMessage" class="block text-sm font-semibold mb-2">Personal message <span class="text-ink/40 font-normal">(optional)</span></label>
+        <textarea id="giftMessage" rows="3" maxlength="400" placeholder="Happy birthday! Enjoy a spotless ride 🚗✨"
+          class="w-full rounded-2xl border border-ink/15 px-5 py-4 text-base focus:outline-none focus:border-accent resize-none"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <p class="text-ink/50 text-xs leading-relaxed">Covers the chosen package for a standard vehicle. Larger vehicles or extra add-ons are billed when they book. Gift codes don't expire. Secure payment by Stripe — we never see card details.</p>
+
+</main>
+
+<!-- STICKY BOTTOM BAR -->
+<div class="fixed bottom-0 left-0 right-0 z-50 bg-paper/95 backdrop-blur-md border-t border-ink/10">
+  <div class="max-w-2xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between gap-4">
+    <div>
+      <div class="text-xs text-ink/50 uppercase tracking-wider">Gift total</div>
+      <div id="giftTotal" class="text-2xl font-extrabold tracking-tight">$—</div>
+    </div>
+    <button id="checkoutBtn" type="button"
+      class="px-6 py-3.5 rounded-full text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+      Continue to secure checkout →
+    </button>
+  </div>
+</div>
+
+<script src="gift.js"></script>
+</body>
+</html>

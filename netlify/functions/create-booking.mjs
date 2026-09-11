@@ -12,6 +12,7 @@
 //                      RequestCreateLineItemAttributes { name, description, unitPrice, quantity, taxable, saveToProductsAndServices }
 
 import { jobberGraphQL } from './lib/jobber.mjs';
+import { getGift, giftPackage, redeemGift } from './lib/gift.mjs';
 
 const CLIENT_CREATE = `
   mutation CreateClient($input: ClientCreateInput!) {
@@ -106,7 +107,6 @@ const CHECKBOX_ADDON_LABELS = {
   tireShine: { label: 'Tire shine', price: 20, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
   engineCleaning: { label: 'Engine bay cleaning', price: 50, scope: 'exterior', includedFrom: ['diamond'] },
   bugTarRemoval: { label: 'Bug and tar removal', price: 25, scope: 'exterior', includedFrom: ['gold', 'diamond'] },
-  headlightRestoration: { label: 'Headlight restoration (pair)', price: 40, scope: 'exterior', includedFrom: [] },
 };
 
 function checkboxAddonPrice(addon, pkgId) {
@@ -147,11 +147,30 @@ function validatePayload(body) {
   if (!contact.fullName || !contact.phone || !contact.email) throw new Error('Incomplete contact info.');
 }
 
-function buildLineItems(body) {
+function buildLineItems(body, gift) {
   const items = [];
   const pkgId = body.package;
   const pkg = PACKAGE_LABELS[pkgId];
   items.push(lineItem(pkg.label, pkg.price));
+
+  // Prepaid gift card: leave the real package line item above at full price
+  // (so the request still shows the true service value), then add a clearly
+  // labeled $0 note telling Maddox the package portion is already paid and to
+  // collect only the difference (vehicle upsize + add-ons). We intentionally
+  // avoid a negative line item — Jobber requests don't reliably accept them.
+  if (gift) {
+    const paid = giftPackage(gift.packageId);
+    const paidLabel = gift.packageLabel || paid?.label || 'package';
+    const paidAmount = paid ? `$${(paid.priceCents / 100).toFixed(0)}` : '';
+    items.push({
+      name: `🎁 PREPAID via gift card — ${gift.code}`,
+      description: `${paidLabel} (${paidAmount}) already paid by ${gift.buyerName || 'gift'}. Collect ONLY vehicle upsize + add-ons below.`,
+      unitPrice: 0,
+      quantity: 1,
+      taxable: false,
+      saveToProductsAndServices: false,
+    });
+  }
 
   // Add line items for each vehicle
   body.vehicles.forEach((vId, idx) => {
@@ -224,6 +243,17 @@ export default async (req) => {
     return json({ ok: false, error: `Invalid request: ${err.message}` }, 400);
   }
 
+  // If a gift code came along, confirm it's real and still unused BEFORE we
+  // create anything in Jobber. We mark it redeemed only after the request is
+  // successfully created, so a Jobber failure never burns the code.
+  let gift = null;
+  if (body.giftCode) {
+    gift = await getGift(body.giftCode);
+    if (!gift) return json({ ok: false, error: 'That gift code was not found.' }, 400);
+    if (gift.status === 'redeemed') return json({ ok: false, error: 'That gift code has already been used.' }, 409);
+    if (gift.status !== 'active') return json({ ok: false, error: 'That gift code is not active.' }, 409);
+  }
+
   try {
     const { firstName, lastName } = splitName(body.contact.fullName);
 
@@ -276,12 +306,13 @@ export default async (req) => {
     const pkg = PACKAGE_LABELS[body.package];
     const sizes = body.vehicles.map(v => VEHICLE_LABELS[v].label);
     const sizeLabel = sizes.length > 1 ? `${sizes.length} vehicles` : sizes[0];
+    const titlePrefix = gift ? '🎁 PREPAID — ' : '';
     const requestResult = await jobberGraphQL(REQUEST_CREATE, {
       input: {
         clientId,
         propertyId,
-        title: `${pkg.label} — ${sizeLabel} — Beehive Detailing booking form`,
-        lineItems: buildLineItems(body),
+        title: `${titlePrefix}${pkg.label} — ${sizeLabel} — Beehive Detailing booking form`,
+        lineItems: buildLineItems(body, gift),
       },
     });
     if (requestResult.requestCreate.userErrors?.length) {
@@ -289,7 +320,20 @@ export default async (req) => {
     }
     const requestId = requestResult.requestCreate.request.id;
 
-    return json({ ok: true, clientId, propertyId, requestId });
+    // Request created — now burn the gift code so it can't be reused.
+    let giftApplied = false;
+    if (gift) {
+      const result = await redeemGift(gift.code, {
+        requestId,
+        bookedBy: body.contact.fullName,
+        email: body.contact.email,
+        date: body.date,
+      });
+      giftApplied = result.ok;
+      if (!result.ok) console.error('Gift redeem failed post-booking:', gift.code, result.error);
+    }
+
+    return json({ ok: true, clientId, propertyId, requestId, giftApplied });
   } catch (err) {
     console.error(err);
     return json({ ok: false, error: err.message }, 500);
