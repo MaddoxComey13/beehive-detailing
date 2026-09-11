@@ -8,10 +8,17 @@
 // listening for `checkout.session.completed`, and put its signing secret in
 // STRIPE_WEBHOOK_SECRET.
 
+import { getStore } from '@netlify/blobs';
 import {
   verifyStripeSignature, generateUniqueCode, saveGift, sendRecipientEmail,
   codeForSession, linkSession, giftPackage, requireEnv,
 } from './lib/gift.mjs';
+
+// TEMPORARY diagnostic: record what each webhook invocation saw so we can read
+// it via gift-debug without Netlify log access. REMOVE after go-live testing.
+async function recordDiag(d) {
+  try { await getStore('gift-codes').setJSON('_lastwebhook', { ...d, at: new Date().toISOString() }); } catch {}
+}
 
 export default async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
@@ -25,12 +32,15 @@ export default async (req) => {
     secret = requireEnv('STRIPE_WEBHOOK_SECRET');
   } catch (err) {
     console.error(err);
+    await recordDiag({ stage: 'no-secret-env' });
     return new Response('Webhook not configured', { status: 500 });
   }
 
   if (!verifyStripeSignature(raw, sig, secret)) {
+    await recordDiag({ stage: 'bad-signature', hasSig: !!sig, rawLen: raw.length });
     return new Response('Invalid signature', { status: 400 });
   }
+  await recordDiag({ stage: 'signature-ok', hasSig: !!sig });
 
   let event;
   try {
@@ -40,12 +50,16 @@ export default async (req) => {
   }
 
   if (event.type !== 'checkout.session.completed') {
+    await recordDiag({ stage: 'ignored-type', type: event.type });
     return new Response('ignored', { status: 200 }); // ack unrelated events
   }
 
   const session = event.data.object;
   const meta = session.metadata || {};
-  if (meta.kind !== 'gift') return new Response('ignored', { status: 200 });
+  if (meta.kind !== 'gift') {
+    await recordDiag({ stage: 'ignored-not-gift', metaKind: meta.kind || null });
+    return new Response('ignored', { status: 200 });
+  }
 
   try {
     // Idempotency: if we already minted a code for this session, stop here.
@@ -74,16 +88,20 @@ export default async (req) => {
     await saveGift(gift);
     await linkSession(session.id, code);
 
+    let emailOk = false, emailErr = null;
     try {
       await sendRecipientEmail({ gift });
       gift.recipientEmailedAt = new Date().toISOString();
       await saveGift(gift);
-    } catch (mailErr) {
+      emailOk = true;
+    } catch (me) {
       // Payment already succeeded and the code is stored — don't fail the
       // webhook over email. Log it so we can resend by hand if needed.
-      console.error('Recipient email failed for', code, mailErr);
+      emailErr = String(me && me.message || me);
+      console.error('Recipient email failed for', code, me);
     }
 
+    await recordDiag({ stage: 'stored', code, emailOk, emailErr });
     return new Response(JSON.stringify({ ok: true, code }), { status: 200 });
   } catch (err) {
     console.error('gift-webhook processing failed:', err);

@@ -22,11 +22,14 @@ export default async (req) => {
   };
 
   let gifts = [];
+  let lastWebhook = null;
   try {
     const store = getStore('gift-codes');
+    lastWebhook = await store.get('_lastwebhook', { type: 'json' });
     const listing = await store.list();
     const keys = (listing.blobs || []).map(b => b.key).filter(k => !k.startsWith('session:'));
     for (const key of keys.slice(-10)) {
+      if (key === '_lastwebhook') continue;
       const g = await store.get(key, { type: 'json' });
       if (!g) continue;
       gifts.push({
@@ -42,7 +45,7 @@ export default async (req) => {
     return json({ ok: false, env, error: String(err && err.message || err) });
   }
 
-  return json({ ok: true, env, giftCount: gifts.length, gifts });
+  return json({ ok: true, env, lastWebhook, giftCount: gifts.length, gifts });
 };
 
 function json(data) {
