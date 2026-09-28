@@ -17,10 +17,6 @@ export const GIFT_PACKAGES = {
   silver:  { id: 'silver',  label: 'Silver Detail',  priceCents: 18400, blurb: 'Full inside-and-out detail, built their way.' },
   gold:    { id: 'gold',    label: 'Gold Detail',    priceCents: 23900, blurb: 'The extras everyone adds anyway, all bundled in.' },
   diamond: { id: 'diamond', label: 'Diamond Detail', priceCents: 27900, blurb: 'Bumper to bumper, nothing held back.' },
-  // TEMPORARY: $1 hidden test SKU for verifying the live flow cheaply. Only
-  // reachable via gift.html?test=1 (not shown to normal visitors). REMOVE
-  // after go-live testing is confirmed.
-  test:    { id: 'test',    label: 'Test Gift',      priceCents: 100,   blurb: 'Internal test — $1.' },
 };
 
 export function giftPackage(id) {

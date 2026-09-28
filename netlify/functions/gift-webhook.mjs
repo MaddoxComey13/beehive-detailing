@@ -1,29 +1,18 @@
-// Stripe webhook. Stripe calls this after a gift is paid for. On
-// checkout.session.completed we mint a unique gift code, store it in Netlify
-// Blobs, and email the recipient. Idempotent: a retried event for the same
-// session returns the code already issued rather than minting a second one.
+// Stripe webhook (backup path). The primary path is finalize-gift, called from
+// the success page. This webhook also issues the gift on
+// checkout.session.completed, so a gift is delivered even if the buyer closes
+// the tab before the redirect. Both paths share issueGiftForSession, which is
+// idempotent (one code per session), so they never double-issue.
 //
-// Configure in Stripe: add an endpoint pointing at
-//   https://<your-site>/.netlify/functions/gift-webhook
-// listening for `checkout.session.completed`, and put its signing secret in
-// STRIPE_WEBHOOK_SECRET.
+// Configure in Stripe: endpoint https://<your-site>/.netlify/functions/gift-webhook
+// listening for `checkout.session.completed`, with STRIPE_WEBHOOK_SECRET set.
 
-import { getStore } from '@netlify/blobs';
-import {
-  verifyStripeSignature, generateUniqueCode, saveGift, sendRecipientEmail,
-  codeForSession, linkSession, giftPackage, requireEnv,
-} from './lib/gift.mjs';
-
-// TEMPORARY diagnostic: record what each webhook invocation saw so we can read
-// it via gift-debug without Netlify log access. REMOVE after go-live testing.
-async function recordDiag(d) {
-  try { await getStore('gift-codes').setJSON('_lastwebhook', { ...d, at: new Date().toISOString() }); } catch {}
-}
+import { verifyStripeSignature, issueGiftForSession, requireEnv } from './lib/gift.mjs';
 
 export default async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
-  // Raw body is required for signature verification — read as text, do not parse first.
+  // Raw body is required for signature verification — read as text, don't parse first.
   const raw = await req.text();
   const sig = req.headers.get('stripe-signature');
 
@@ -32,80 +21,23 @@ export default async (req) => {
     secret = requireEnv('STRIPE_WEBHOOK_SECRET');
   } catch (err) {
     console.error(err);
-    await recordDiag({ stage: 'no-secret-env' });
     return new Response('Webhook not configured', { status: 500 });
   }
 
   if (!verifyStripeSignature(raw, sig, secret)) {
-    await recordDiag({ stage: 'bad-signature', hasSig: !!sig, rawLen: raw.length });
     return new Response('Invalid signature', { status: 400 });
   }
-  await recordDiag({ stage: 'signature-ok', hasSig: !!sig });
 
   let event;
-  try {
-    event = JSON.parse(raw);
-  } catch {
-    return new Response('Invalid JSON', { status: 400 });
-  }
+  try { event = JSON.parse(raw); } catch { return new Response('Invalid JSON', { status: 400 }); }
 
-  if (event.type !== 'checkout.session.completed') {
-    await recordDiag({ stage: 'ignored-type', type: event.type });
-    return new Response('ignored', { status: 200 }); // ack unrelated events
-  }
-
-  const session = event.data.object;
-  const meta = session.metadata || {};
-  if (meta.kind !== 'gift') {
-    await recordDiag({ stage: 'ignored-not-gift', metaKind: meta.kind || null });
-    return new Response('ignored', { status: 200 });
-  }
+  if (event.type !== 'checkout.session.completed') return new Response('ignored', { status: 200 });
 
   try {
-    // Idempotency: if we already minted a code for this session, stop here.
-    const existing = await codeForSession(session.id);
-    if (existing) return new Response(JSON.stringify({ ok: true, code: existing }), { status: 200 });
-
-    const pkg = giftPackage(meta.packageId);
-    const code = await generateUniqueCode();
-    const gift = {
-      code,
-      status: 'active',
-      packageId: meta.packageId,
-      packageLabel: meta.packageLabel || pkg?.label || 'Detail',
-      amountCents: session.amount_total ?? pkg?.priceCents ?? null,
-      buyerName: meta.buyerName || '',
-      buyerEmail: meta.buyerEmail || session.customer_email || '',
-      recipientName: meta.recipientName || '',
-      recipientEmail: meta.recipientEmail || '',
-      message: meta.message || '',
-      stripeSessionId: session.id,
-      createdAt: new Date().toISOString(),
-      redeemedAt: null,
-      redemption: null,
-    };
-
-    await saveGift(gift);
-    await linkSession(session.id, code);
-
-    let emailOk = false, emailErr = null;
-    try {
-      await sendRecipientEmail({ gift });
-      gift.recipientEmailedAt = new Date().toISOString();
-      await saveGift(gift);
-      emailOk = true;
-    } catch (me) {
-      // Payment already succeeded and the code is stored — don't fail the
-      // webhook over email. Log it so we can resend by hand if needed.
-      emailErr = String(me && me.message || me);
-      console.error('Recipient email failed for', code, me);
-    }
-
-    await recordDiag({ stage: 'stored', code, emailOk, emailErr });
-    return new Response(JSON.stringify({ ok: true, code }), { status: 200 });
+    const result = await issueGiftForSession(event.data.object);
+    return new Response(JSON.stringify(result), { status: 200 });
   } catch (err) {
     console.error('gift-webhook processing failed:', err);
-    // 500 tells Stripe to retry the event later.
-    return new Response('processing error', { status: 500 });
+    return new Response('processing error', { status: 500 }); // 500 => Stripe retries
   }
 };

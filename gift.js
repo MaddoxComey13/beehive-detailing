@@ -111,14 +111,6 @@ function init() {
     }
   }
 
-  // TEMPORARY: ?test=1 reveals a hidden $1 test package for verifying the
-  // live flow cheaply. Remove this block (and the 'test' SKU in lib/gift.mjs)
-  // after go-live testing.
-  if (new URLSearchParams(window.location.search).get('test') === '1'
-      && !GIFT_PACKAGES.some(p => p.id === 'test')) {
-    GIFT_PACKAGES.push({ id: 'test', label: 'Test Gift ($1)', price: 1, desc: 'Internal test only — remove after launch.' });
-  }
-
   // Preselect from ?pkg= (lets homepage/gift buttons deep-link a tier).
   const pkgParam = new URLSearchParams(window.location.search).get('pkg');
   if (GIFT_PACKAGES.some(p => p.id === pkgParam)) state.package = pkgParam;
