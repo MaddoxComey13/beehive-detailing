@@ -125,7 +125,10 @@ export async function createCheckoutSession(pkg, { buyerEmail, metadata }) {
   const secret = requireEnv('STRIPE_SECRET_KEY');
   const body = formEncode({
     mode: 'payment',
-    success_url: `${siteUrl()}/gift.html?status=success`,
+    // {CHECKOUT_SESSION_ID} is substituted by Stripe on redirect so the success
+    // page can finalize the gift server-side (retrieve session -> issue code +
+    // email) without depending on the webhook.
+    success_url: `${siteUrl()}/gift.html?status=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl()}/gift.html?status=cancel`,
     customer_email: buyerEmail,
     line_items: [{
@@ -152,6 +155,75 @@ export async function createCheckoutSession(pkg, { buyerEmail, metadata }) {
   const json = await res.json();
   if (!res.ok) throw new Error(`Stripe error: ${json.error?.message || res.status}`);
   return json; // has .url to redirect the buyer to
+}
+
+// Retrieve a Checkout Session by id (to finalize a gift from the success page).
+export async function retrieveCheckoutSession(sessionId) {
+  const secret = requireEnv('STRIPE_SECRET_KEY');
+  const res = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
+    headers: { 'Authorization': `Bearer ${secret}` },
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Stripe error: ${json.error?.message || res.status}`);
+  return json;
+}
+
+// List recent Checkout Sessions (used to recover a paid gift whose redirect
+// didn't carry a session_id). Newest first.
+export async function listRecentSessions(limit = 5) {
+  const secret = requireEnv('STRIPE_SECRET_KEY');
+  const res = await fetch(`https://api.stripe.com/v1/checkout/sessions?limit=${limit}`, {
+    headers: { 'Authorization': `Bearer ${secret}` },
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Stripe error: ${json.error?.message || res.status}`);
+  return json.data || [];
+}
+
+// Idempotently turn a PAID gift checkout session into a stored code + email.
+// Safe to call multiple times (webhook and/or success page) — one code per
+// session, guaranteed by the session->code link.
+export async function issueGiftForSession(session) {
+  if (!session || (session.metadata && session.metadata.kind !== 'gift')) {
+    return { ok: false, reason: 'not-a-gift' };
+  }
+  if (session.payment_status && session.payment_status !== 'paid') {
+    return { ok: false, reason: `not-paid:${session.payment_status}` };
+  }
+  const existing = await codeForSession(session.id);
+  if (existing) {
+    const g = await getGift(existing);
+    return { ok: true, code: existing, alreadyIssued: true, emailed: !!(g && g.recipientEmailedAt) };
+  }
+  const meta = session.metadata || {};
+  const pkg = giftPackage(meta.packageId);
+  const code = await generateUniqueCode();
+  const gift = {
+    code, status: 'active',
+    packageId: meta.packageId,
+    packageLabel: meta.packageLabel || pkg?.label || 'Detail',
+    amountCents: session.amount_total ?? pkg?.priceCents ?? null,
+    buyerName: meta.buyerName || '',
+    buyerEmail: meta.buyerEmail || session.customer_email || session.customer_details?.email || '',
+    recipientName: meta.recipientName || '',
+    recipientEmail: meta.recipientEmail || '',
+    message: meta.message || '',
+    stripeSessionId: session.id,
+    createdAt: new Date().toISOString(),
+    redeemedAt: null, redemption: null,
+  };
+  await saveGift(gift);
+  await linkSession(session.id, code);
+  let emailed = false, emailErr = null;
+  try {
+    await sendRecipientEmail({ gift });
+    gift.recipientEmailedAt = new Date().toISOString();
+    await saveGift(gift);
+    emailed = true;
+  } catch (e) {
+    emailErr = String(e && e.message || e);
+  }
+  return { ok: true, code, alreadyIssued: false, emailed, emailErr };
 }
 
 // Verify a Stripe webhook signature without the SDK.

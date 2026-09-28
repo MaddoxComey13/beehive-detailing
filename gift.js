@@ -100,8 +100,16 @@ async function startCheckout() {
 function init() {
   // Post-Stripe redirect banners.
   const status = new URLSearchParams(window.location.search).get('status');
-  if (status === 'success') document.getElementById('successBanner').classList.remove('hidden');
   if (status === 'cancel') document.getElementById('cancelBanner').classList.remove('hidden');
+  if (status === 'success') {
+    document.getElementById('successBanner').classList.remove('hidden');
+    // Finalize server-side (issue code + email the recipient) using the
+    // session id Stripe appended to the success URL. No webhook needed.
+    const sid = new URLSearchParams(window.location.search).get('session_id');
+    if (sid) {
+      fetch('/.netlify/functions/finalize-gift?session_id=' + encodeURIComponent(sid)).catch(() => {});
+    }
+  }
 
   // TEMPORARY: ?test=1 reveals a hidden $1 test package for verifying the
   // live flow cheaply. Remove this block (and the 'test' SKU in lib/gift.mjs)
