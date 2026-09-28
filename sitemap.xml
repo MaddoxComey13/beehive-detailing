@@ -26,6 +26,16 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://beehivedetailingco.com/paint-correction.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://beehivedetailingco.com/polish.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://beehivedetailingco.com/pet-hair-removal.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
