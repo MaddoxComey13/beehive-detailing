@@ -147,10 +147,26 @@
         <span class="text-ink/40 text-[15px] tracking-tight hidden sm:inline">Detailing</span>
       </a>
       <div class="hidden md:flex items-center gap-8 text-sm text-ink/70">
-        <a href="#services" class="hover:text-ink transition-colors cursor-pointer">Services</a>
+        <div class="relative group">
+          <a href="mobile-detailing.html" class="hover:text-ink transition-colors cursor-pointer inline-flex items-center gap-1">
+            Services
+            <svg class="w-3 h-3 opacity-60 transition-transform group-hover:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </a>
+          <!-- pt-3 keeps a hover bridge so the menu doesn't vanish between link and panel -->
+          <div class="absolute left-1/2 -translate-x-1/2 top-full pt-3 hidden group-hover:block z-50">
+            <div class="bg-white rounded-2xl border border-ink/10 shadow-[0_8px_30px_rgba(15,23,42,0.12)] py-2 w-56">
+              <a href="mobile-detailing.html" class="block px-4 py-2.5 hover:bg-ink/5 transition-colors">Mobile detailing</a>
+              <a href="interior-detailing.html" class="block px-4 py-2.5 hover:bg-ink/5 transition-colors">Interior detailing</a>
+              <a href="exterior-detailing.html" class="block px-4 py-2.5 hover:bg-ink/5 transition-colors">Exterior detailing</a>
+              <a href="ceramic-coating.html" class="block px-4 py-2.5 hover:bg-ink/5 transition-colors">Ceramic coating</a>
+              <a href="pet-hair-removal.html" class="block px-4 py-2.5 hover:bg-ink/5 transition-colors">Pet hair removal</a>
+              <a href="odor-removal.html" class="block px-4 py-2.5 hover:bg-ink/5 transition-colors">Odor removal</a>
+            </div>
+          </div>
+        </div>
         <a href="#how" class="hover:text-ink transition-colors cursor-pointer">How it works</a>
         <a href="#reviews" class="hover:text-ink transition-colors cursor-pointer">Reviews</a>
-        <a href="#about" class="hover:text-ink transition-colors cursor-pointer">About</a>
+        <a href="gift.html" class="hover:text-ink transition-colors cursor-pointer">Gift cards</a>
       </div>
       <div class="flex items-center gap-2 sm:gap-3">
         <a href="tel:+18015973866" class="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-ink/70 hover:text-accent transition-colors cursor-pointer">
